@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Simulate a crash",
+    "description": "This recipe is a test file to simulate a crash."
+  },
+  {
+    "statement": "Open the application 'Subtitle Edit'.",
+    "function_name": null,
+    "requires_input": false
+  },
+  {
+        "statement": "This step will open a file dialog. Please provide a title for the window.",
+        "function_name": "OpenFileWindow",
+        "prompt_for": {
+            "title": "Enter the title for the file window: "
+        }
+  },
+  {
+    "statement": "After the waveform is generated, go to 'Video' -> 'Import subtitle from video'.",
+    "function_name": null,
+    "requires_input": false
+  },
+  {
+    "statement": "A 'VobSub' window will appear. Click 'Start ripping'.",
+    "function_name": null,
+    "requires_input": false
+  },
+  {
+    "statement": "This is a simulated crashing step.",
+    "function_name": "crash_the_program",
+    "requires_input": false
+  },
+  {
+    "statement": "When finished, save the newly created subtitle file (.srt) in this directory. Now, please enter the full name of the .srt file you just saved (e.g., 'my_movie.srt').",
+    "function_name": "process_subtitle_file",
+    "requires_input": true
+  }
+]
