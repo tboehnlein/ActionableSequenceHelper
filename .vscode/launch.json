@@ -5,7 +5,7 @@
       "name": "Python: Launch Recipe Menu",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/menu.py",
+      "program": "${workspaceFolder}/ash_menu.py",
       "console": "integratedTerminal"
     }
   ]
