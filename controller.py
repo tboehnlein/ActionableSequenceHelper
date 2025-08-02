@@ -108,7 +108,7 @@ def run_recipe(recipe_path: str, module_path: str):
 
                         # Loop for a single prompt until we get valid input
                         while True:
-                            user_input = console.input(f"[cyan]{prompt_text}[/cyan]").strip()
+                            user_input = console.input(f"[cyan]{prompt_text}[/cyan]: ").strip()
                             if user_input:
                                 call_args[param_name] = user_input
                                 break  # Exit the prompt-specific loop
