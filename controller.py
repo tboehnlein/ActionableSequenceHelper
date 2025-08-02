@@ -1,18 +1,36 @@
-
 import json
 import importlib.util
 import os
 import inspect
+import tkinter as tk
+from tkinter import filedialog
 from rich.console import Console
 from rich.panel import Panel
 
 # Create a console object for beautiful output
 console = Console()
 
+def run_tk_dialog(dialog_func, *args, **kwargs):
+    """
+    A wrapper to safely run a tkinter dialog, ensuring the window is on top
+    and the root window is properly destroyed.
+    """
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    
+    # The dialog function (e.g., filedialog.askopenfilename) is called here
+    result = dialog_func(*args, **kwargs)
+    
+    root.attributes('-topmost', False)
+    root.destroy()
+    
+    return result
+
 def run_recipe(recipe_path: str, module_path: str):
     """
     Executes a recipe file step-by-step, guiding the user with rich formatting.
-    Dynamically loads functions from the associated module.
+    Dynamically loads functions from an optional associated module.
     """
     try:
         with open(recipe_path, 'r') as f:
@@ -24,20 +42,21 @@ def run_recipe(recipe_path: str, module_path: str):
         console.print(f"[bold red]Error:[/] Could not decode JSON from [cyan]'{recipe_path}'[/cyan]")
         return
 
-    try:
-        module_name = os.path.splitext(os.path.basename(module_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec and spec.loader:
-            recipe_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(recipe_module)
-        else:
-            console.print(f"[bold red]Error:[/] Could not create module spec for [cyan]'{module_path}'[/cyan].")
-            return
-    except Exception as e:
-        console.print(f"[bold red]Error:[/] Failed to load module from [cyan]'{module_path}'[/cyan]: {e}")
-        return
-    
-    title = recipe[0]['title']
+    recipe_module = None
+    # Only try to load a module if the .py file actually exists
+    if os.path.exists(module_path):
+        try:
+            module_name = os.path.splitext(os.path.basename(module_path))[0]
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            if spec and spec.loader:
+                recipe_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(recipe_module)
+            else:
+                console.print(f"[bold yellow]Warning:[/] Could not create module spec for [cyan]'{module_path}'[/cyan].")
+        except Exception as e:
+            console.print(f"[bold yellow]Warning:[/] Failed to load module from [cyan]'{module_path}'[/cyan]: {e}")
+
+    title = recipe[0].get('title', 'Untitled Recipe')
 
     console.print(f"[bold green]--- Starting Recipe [bold white]{title}[/bold white] ---[/bold green]")
     console.print("-" * 25)
@@ -48,17 +67,22 @@ def run_recipe(recipe_path: str, module_path: str):
         
         console.print(Panel(
             f"{step['statement']}",
-            title=f"[yellow bold]Step {current_step_index + 1}[/yellow bold]",
+            title=f"[yellow bold]Step {current_step_index}[/yellow bold]",
             border_style="blue"
         ))
 
         step_success = False
         # Loop until the current step is successfully completed
         while not step_success:
+            # If there's no function, the step is just text. It's automatically successful.
             if not step.get('function_name'):
-                # If there's no function, the step is automatically successful
                 step_success = True
                 continue
+
+            # If a function is required, but we have no module, it's an error.
+            if not recipe_module:
+                console.print(f"\n[bold red]Configuration Error:[/] Step requires function '{step['function_name']}', but no code file was found at [cyan]{module_path}[/cyan].\n")
+                return # Abort the recipe
 
             try:
                 func_to_call = getattr(recipe_module, step['function_name'])
@@ -67,29 +91,33 @@ def run_recipe(recipe_path: str, module_path: str):
                 # --- Argument & Parameter Handling ---
                 call_args = {}
 
-                # 1. Inject console if requested
+                # 1. Inject dependencies
                 if 'console' in func_params:
                     call_args['console'] = console
+                if 'run_tk_dialog' in func_params:
+                    call_args['run_tk_dialog'] = run_tk_dialog
 
                 # 2. Prompt user for specified parameters
+                prompts_ok = True
                 if 'prompt_for' in step and isinstance(step['prompt_for'], dict):
-                    step_success = True  # Assume success unless we find an issue
                     for param_name, prompt_text in step['prompt_for'].items():
-                        if param_name in func_params:
-                            user_input = console.input(f"[cyan]{prompt_text}[/cyan]").strip()
-                            if not user_input:
-                                console.print("[bold red]Input cannot be empty. Please try again.[/bold red]")
-                                # We need to break out and restart the step loop
-                                step_success = False
-                                break
-                            call_args[param_name] = user_input
-                        else:
+                        if param_name not in func_params:
                             console.print(f"[bold red]Configuration Error:[/] Recipe wants to prompt for '{param_name}', but function has no such parameter.")
-                            step_success = False
+                            prompts_ok = False
                             break
-                    if not step_success: # If any prompt failed, restart the step
-                        continue
+
+                        # Loop for a single prompt until we get valid input
+                        while True:
+                            user_input = console.input(f"[cyan]{prompt_text}[/cyan]").strip()
+                            if user_input:
+                                call_args[param_name] = user_input
+                                break  # Exit the prompt-specific loop
+                            else:
+                                console.print("[bold red]Input cannot be empty. Please try again.[/bold red]")
                 
+                if not prompts_ok:
+                    continue # A configuration error occurred, restart the step
+
                 # 3. Pass any other parameters directly from JSON
                 for param_name, param_value in step.items():
                     if param_name in func_params and param_name not in call_args:

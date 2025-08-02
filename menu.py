@@ -5,8 +5,9 @@ from rich.panel import Panel
 from rich.columns import Columns
 import controller
 
+software_version = "Actionable Sequence Helper (ASH) v1.0"
 console = Console()
-RECIPES_DIR = "c:/Source Code/SubtitleSplitter/recipes/"
+RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
 
 def load_recipe_details(recipe_files):
     """Loads recipe details from files for menu display."""
@@ -56,7 +57,7 @@ def display_menu():
 
     console.print(Panel(
         menu_columns,
-        title="[bold blue]Welcome to Ash Helper Pro v1.0![/bold blue]",
+        title=f"[bold blue]Welcome to {software_version}![/bold blue]",
         border_style="blue",
         subtitle="Enter Q to quit."
     ))
@@ -65,7 +66,7 @@ def display_menu():
         choice = console.input("[bold green]Enter recipe number, name, or Q to quit: [/bold green]").strip()
 
         if choice.lower() == 'q':
-            console.print("[bold yellow]Exiting Ash Helper Pro v1.0. Goodbye![/bold yellow]")
+            console.print(f"[bold yellow]Exiting {software_version}. Goodbye![/bold yellow]")
             break
         
         selected_recipe_path = None
