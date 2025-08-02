@@ -129,14 +129,16 @@ def display_menu():
     # Let Rich handle the columns automatically
     menu_columns = Columns(menu_panels, expand=True)
 
-    console.print(Panel(
+
+    while True:
+
+        console.print(Panel(
         menu_columns,
         title=f"[bold blue]Welcome to {software_version}![/bold blue]",
         border_style="blue",
         subtitle="Enter Q to quit."
-    ))
+        ))
 
-    while True:
         choice = console.input("[bold green]Enter recipe number, name, or Q to quit: [/bold green]").strip()
 
         if choice.lower() == 'q':
@@ -151,9 +153,15 @@ def display_menu():
             show_recipe_info(selected_recipe_data)
             module_name = os.path.splitext(selected_recipe_data['filename'])[0]
             module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            controller.run_recipe(os.path.join(RECIPES_DIR, selected_recipe_data['filename']), module_path)
-            display_menu() # Re-display the menu after running a recipe
-            break
+            # Run the recipe and check for fatal error
+            try:
+                controller.run_recipe(os.path.join(RECIPES_DIR, selected_recipe_data['filename']), module_path)
+            except SystemExit:
+                # If controller.run_recipe aborts with SystemExit, break out of the menu loop
+                break
+            except Exception as e:
+                console.print(f"[bold red]Fatal error running recipe: {e}[/bold red]")
+                break
 
 def main():
     """

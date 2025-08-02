@@ -121,7 +121,7 @@ def execute_step(step, recipe_module):
     # If a function is required, but we have no module, it's an error.
     if not recipe_module:
         console.print(f"\n[bold red]Configuration Error:[/] Step requires function '{step['function_name']}', but no code file was found.\n")
-        return False
+        return None
     try:
         func_to_call = getattr(recipe_module, step['function_name'])
         func_params = inspect.signature(func_to_call).parameters
@@ -148,7 +148,7 @@ def execute_step(step, recipe_module):
             return False
     except AttributeError:
         console.print(f"\n[bold red]FATAL ERROR:[/] Function [yellow]'{step['function_name']}'[/yellow] not found in the module! Cannot proceed.\n")
-        return False
+        return None
     except Exception as e:
         console.print(f"\n[bold red]ERROR:[/] An unexpected error occurred in function '{step['function_name']}': {e}\n")
         return False
@@ -183,6 +183,15 @@ def run_recipe(recipe_path: str, module_path: str):
         step_success = False
         while not step_success:
             step_success = execute_step(step, recipe_module)
+            if step_success is None:
+                # Fatal error, abort recipe
+                console.print("[bold red]Recipe execution aborted due to fatal error.[/bold red]")
+                return
+            elif step_success:
+                if step.get('prompt_for'):
+                    console.print(f"[bold green]Step {current_step_index} completed successfully![/bold green]")
+            else:
+                console.print("[bold yellow]Retrying step...[/bold yellow]")
             if not step_success:
                 # If the step failed, allow retry
                 continue
