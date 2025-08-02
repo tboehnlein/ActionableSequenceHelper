@@ -10,7 +10,17 @@ console = Console()
 RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
 
 def load_recipe_details(recipe_files):
-    """Loads recipe details from files for menu display."""
+    """
+    Loads recipe details from JSON files for menu display.
+
+    Parameters:
+        recipe_files (list of str): List of recipe JSON filenames in the recipes directory.
+
+    Returns:
+        tuple: (menu_items, recipes_data)
+            menu_items (list of dict): Each dict contains filename, title, and description for a recipe.
+            recipes_data (dict): Mapping of filename to loaded recipe data.
+    """
     menu_items = []
     recipes_data = {}
     for i, recipe_file in enumerate(recipe_files):
@@ -42,15 +52,79 @@ def load_recipe_details(recipe_files):
             })
     return menu_items, recipes_data
 
+def format_menu_panels(menu_items_data):
+    """
+    Create a list of rich Panel objects for each recipe menu item.
+
+    Parameters:
+        menu_items_data (list of dict): List of recipe metadata dicts.
+
+    Returns:
+        list of Panel: Panels for display in the menu.
+    """
+    return [
+        Panel(f"[bold]{i+1}.) {item['title']}[/bold]\n{item['description']}", expand=True)
+        for i, item in enumerate(menu_items_data)
+    ]
+
+def find_recipe_by_choice(choice, menu_items_data):
+    """
+    Find a recipe by user input (number, exact name, or partial match).
+
+    Parameters:
+        choice (str): User input from the menu prompt.
+        menu_items_data (list of dict): List of recipe metadata dicts.
+
+    Returns:
+        tuple: (selected_recipe_data, error_message)
+            selected_recipe_data (dict or None): The matched recipe dict, or None if not found.
+            error_message (str or None): Error message to display, or None if no error.
+    """
+    if choice.isdigit():
+        idx = int(choice) - 1
+        if 0 <= idx < len(menu_items_data):
+            return menu_items_data[idx], None
+        else:
+            return None, "[bold red]Invalid number. Please try again.[/bold red]"
+    # Exact match (case-insensitive)
+    found_matches = [item for item in menu_items_data if choice.lower() == item['title'].lower()]
+    if len(found_matches) == 1:
+        return found_matches[0], None
+    # Partial match (case-insensitive)
+    found_matches = [item for item in menu_items_data if choice.lower() in item['title'].lower()]
+    if len(found_matches) == 1:
+        return found_matches[0], None
+    elif len(found_matches) > 1:
+        msg = "[bold yellow]Multiple matches found. Please be more specific:[/bold yellow]\n" + "\n".join(f"- {match['title']}" for match in found_matches)
+        return None, msg
+    else:
+        return None, "[bold red]Recipe not found. Please try again.[/bold red]"
+
+def show_recipe_info(selected_recipe_data):
+    """
+    Print the selected recipe's title and description.
+
+    Parameters:
+        selected_recipe_data (dict): The selected recipe metadata dict.
+    """
+    console.print(f"[bold green]Selected recipe:[/bold green] [cyan]{selected_recipe_data['title']}[/cyan]")
+    console.print(f"[bold green]Description:[/bold green] [cyan]{selected_recipe_data.get('description', 'No description available.')}[/cyan]")
+
 def display_menu():
+    """
+    Display the interactive recipe selection menu and handle user input.
+
+    Parameters:
+        None
+
+    Returns:
+        None
+    """
     recipe_files = [f for f in os.listdir(RECIPES_DIR) if f.endswith(".json")]
     
     menu_items_data, _ = load_recipe_details(recipe_files)
     
-    menu_panels = [
-        Panel(f"[bold]{i+1}.) {item['title']}[/bold]\n{item['description']}", expand=True)
-        for i, item in enumerate(menu_items_data)
-    ]
+    menu_panels = format_menu_panels(menu_items_data)
     
     # Let Rich handle the columns automatically
     menu_columns = Columns(menu_panels, expand=True)
@@ -69,54 +143,28 @@ def display_menu():
             console.print(f"[bold yellow]Exiting {software_version}. Goodbye![/bold yellow]")
             break
         
-        selected_recipe_path = None
-        selected_recipe_data = None
-
-        # Try to match by number
-        if choice.isdigit():
-            idx = int(choice) - 1
-            if 0 <= idx < len(menu_items_data):
-                selected_recipe_data = menu_items_data[idx]
-                selected_recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
-            else:
-                console.print("[bold red]Invalid number. Please try again.[/bold red]")
-                continue
-        # Try to match by name
-        else:
-            # Check for exact match first (case-insensitive on title)
-            found_matches = [item for item in menu_items_data if choice.lower() == item['title'].lower()]
-            if len(found_matches) == 1:
-                 selected_recipe_data = found_matches[0]
-                 selected_recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
-            else:
-                # Check for partial match (case-insensitive on title)
-                found_matches = [item for item in menu_items_data if choice.lower() in item['title'].lower()]
-                if len(found_matches) == 1:
-                    selected_recipe_data = found_matches[0]
-                    selected_recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
-                elif len(found_matches) > 1:
-                    console.print("[bold yellow]Multiple matches found. Please be more specific:[/bold yellow]")
-                    for match in found_matches:
-                        console.print(f"- {match['title']}")
-                    continue
-                else:
-                    console.print("[bold red]Recipe not found. Please try again.[/bold red]")
-                    continue
-
-        if selected_recipe_path:
-            console.print(f"[bold green]Selected recipe:[/bold green] [cyan]{selected_recipe_data['title']}[/cyan]")
-            console.print(f"[bold green]Description:[/bold green] [cyan]{selected_recipe_data.get('description', 'No description available.')}[/cyan]")
-            
-            # Construct the path to the corresponding Python module
+        selected_recipe_data, error_message = find_recipe_by_choice(choice, menu_items_data)
+        if error_message:
+            console.print(error_message)
+            continue
+        if selected_recipe_data:
+            show_recipe_info(selected_recipe_data)
             module_name = os.path.splitext(selected_recipe_data['filename'])[0]
             module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            
-            controller.run_recipe(selected_recipe_path, module_path)
-            # After running a recipe, display the menu again
-            display_menu() # This will re-display the menu and prompt for input again
-            break # Exit the current loop to prevent re-prompting after a recipe runs
+            controller.run_recipe(os.path.join(RECIPES_DIR, selected_recipe_data['filename']), module_path)
+            display_menu() # Re-display the menu after running a recipe
+            break
 
 def main():
+    """
+    Entry point for the ASH menu application.
+
+    Parameters:
+        None
+
+    Returns:
+        None
+    """
     display_menu()
 
 if __name__ == "__main__":
