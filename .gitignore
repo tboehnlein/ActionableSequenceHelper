@@ -1,2 +1,8 @@
-/recipes
-/__pycache__
+# ... other ignores ...
+
+# Ignore the recipes folder and its contents
+/recipes/
+
+# Python cache files
+__pycache__/
+*.pyc
