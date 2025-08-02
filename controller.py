@@ -198,7 +198,6 @@ def run_recipe(recipe_path: str, module_path: str):
         current_step_index += 1
         if current_step_index < len(recipe):
             console.input("\n[dim]Press Enter to continue...[/dim]")
-            console.print("-" * 25)
     console.print("\n[bold green]--- Recipe Complete ---")
 
 if __name__ == "__main__":
