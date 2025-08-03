@@ -1,3 +1,55 @@
+"""
+Actionable Sequence Helper (ASH) Menu System
+
+This module provides an interactive menu system for executing step-by-step recipes.
+Recipes are defined in JSON files and can optionally have associated Python modules
+for custom functionality.
+
+USAGE:
+    python ash_menu.py
+
+    The program will scan the 'recipes' directory for .json files and display them
+    in an interactive menu. Users can select recipes by number or name.
+
+RECIPE FORMAT:
+    Recipes are JSON arrays where:
+    - First element: {"title": "Recipe Name", "description": "What it does"}
+    - Subsequent elements: Recipe steps with optional function calls
+
+    Example recipe.json:
+    [
+        {"title": "My Recipe", "description": "Does something useful"},
+        {"statement": "First step - just text"},
+        {
+            "statement": "Second step - calls a function",
+            "function_name": "my_function",
+            "prompt_for": {"param": "Enter value for param"}
+        }
+    ]
+
+PYTHON MODULES:
+    Optional Python files (same name as JSON) can provide custom functions:
+    - Functions are called based on "function_name" in recipe steps
+    - Parameters can be prompted from user via "prompt_for"
+    - Special dependencies are auto-injected: 'console', 'run_tk_dialog'
+
+MENU FEATURES:
+    - Q: Quit the application
+    - R: Refresh menu (useful after fixing recipe errors)
+    - Number selection: Choose recipe by menu number
+    - Name selection: Choose recipe by exact or partial name match
+    - Error display: Shows LOAD ERROR for broken recipes before selection
+
+DIRECTORY STRUCTURE:
+    project/
+    ├── ash_menu.py          # This file
+    ├── controller.py        # Recipe execution engine
+    └── recipes/             # Recipe directory
+        ├── recipe1.json     # Recipe definition
+        ├── recipe1.py       # Optional Python functions
+        └── recipe2.json     # Another recipe
+"""
+
 import os
 import json
 from rich.console import Console
@@ -159,43 +211,64 @@ def show_recipe_info(selected_recipe_data):
     console.print(f"[bold green]Selected recipe:[/bold green] [cyan]{selected_recipe_data['title']}[/cyan]")
     console.print(f"[bold green]Description:[/bold green] [cyan]{selected_recipe_data.get('description', 'No description available.')}[/cyan]")
 
+def show_menu_display(menu_items_data):
+    """Display the formatted recipe menu."""
+    menu_panels = format_menu_panels(menu_items_data)
+    menu_columns = Columns(menu_panels, expand=True)
+    console.print(Panel(
+        menu_columns,
+        title=f"[bold blue]Welcome to {software_version}![/bold blue]",
+        border_style="blue",
+        subtitle="Enter Q to quit or R to refresh."
+    ))
+
+def get_user_choice():
+    """Get and return user input from the menu prompt."""
+    return console.input("[bold green]Enter recipe number, name, R to refresh, or Q to quit: [/bold green]").strip()
+
+def handle_recipe_selection(selected_recipe_data):
+    """Execute the selected recipe and handle any errors."""
+    show_recipe_info(selected_recipe_data)
+    module_name = os.path.splitext(selected_recipe_data['filename'])[0]
+    module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
+    recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
+    
+    try:
+        controller.run_recipe(recipe_path, module_path)
+    except SystemExit:
+        return False  # Exit the menu
+    except Exception as e:
+        console.print(f"[bold red]Fatal error running recipe: {e}[/bold red]")
+        return False  # Exit the menu
+    return True  # Continue menu loop
+
 def display_menu():
-    """
-    Display the interactive recipe selection menu and handle user input.
-    """
+    """Display the interactive recipe selection menu and handle user input."""
     while True:
+        # Load and display menu
         recipe_files = [f for f in os.listdir(RECIPES_DIR) if f.endswith(".json")]
         menu_items_data, _ = load_recipe_details(recipe_files)
-        menu_panels = format_menu_panels(menu_items_data)
-        menu_columns = Columns(menu_panels, expand=True)
-        console.print(Panel(
-            menu_columns,
-            title=f"[bold blue]Welcome to {software_version}![/bold blue]",
-            border_style="blue",
-            subtitle="Enter Q to quit or R to refresh."
-        ))
-        choice = console.input("[bold green]Enter recipe number, name, R to refresh, or Q to quit: [/bold green]").strip()
+        show_menu_display(menu_items_data)
+        
+        # Get user input
+        choice = get_user_choice()
+        
+        # Handle special commands
         if choice.lower() == 'q':
             console.print(f"[bold yellow]Exiting {software_version}. Goodbye![/bold yellow]")
             break
         if choice.lower() == 'r':
-            # Refresh the menu by continuing the loop
-            continue
+            continue  # Refresh menu
+        
+        # Handle recipe selection
         selected_recipe_data, error_message = find_recipe_by_choice(choice, menu_items_data)
         if error_message:
             console.print(error_message)
             continue
+            
         if selected_recipe_data:
-            show_recipe_info(selected_recipe_data)
-            module_name = os.path.splitext(selected_recipe_data['filename'])[0]
-            module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            try:
-                controller.run_recipe(os.path.join(RECIPES_DIR, selected_recipe_data['filename']), module_path)
-            except SystemExit:
-                break
-            except Exception as e:
-                console.print(f"[bold red]Fatal error running recipe: {e}[/bold red]")
-                break
+            if not handle_recipe_selection(selected_recipe_data):
+                break  # Exit if recipe execution requests it
 
 def main():
     """

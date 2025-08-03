@@ -1,3 +1,58 @@
+"""
+Actionable Sequence Helper (ASH) Recipe Controller
+
+This module handles the execution of recipe files, managing the step-by-step process
+of running recipes with optional Python function integration.
+
+CORE FUNCTIONALITY:
+    - Loads and parses JSON recipe files
+    - Dynamically imports and executes Python functions
+    - Handles user input prompting for function parameters
+    - Provides dependency injection for common utilities
+    - Manages step execution flow with retry logic
+
+RECIPE EXECUTION FLOW:
+    1. Load recipe JSON and optional Python module
+    2. Display recipe title and initialize
+    3. For each step:
+       - Display step statement in formatted panel
+       - Execute any associated function with parameter prompting
+       - Handle success/failure/retry logic
+       - Wait for user confirmation before next step
+
+FUNCTION INTEGRATION:
+    Recipe functions can receive injected dependencies:
+    - 'console': Rich console object for formatted output
+    - 'run_tk_dialog': Helper for tkinter file dialogs with proper focus
+    
+    Functions should return True for success, False for failure.
+    Returning False allows the user to retry the step.
+
+PARAMETER HANDLING:
+    Functions can prompt for user input via recipe "prompt_for" fields:
+    {
+        "function_name": "my_function",
+        "prompt_for": {
+            "filename": "Enter the filename",
+            "option": "Choose an option"
+        }
+    }
+    
+    Parameters are validated against the function signature before calling.
+
+ERROR HANDLING:
+    - Missing functions: Fatal error, aborts recipe
+    - Function exceptions: Displays error, allows retry
+    - Missing modules: Shows configuration error
+    - Invalid JSON: Reports parsing errors
+
+USAGE:
+    This module is typically imported by ash_menu.py, but can be used directly:
+    
+    from controller import run_recipe
+    run_recipe("path/to/recipe.json", "path/to/recipe.py")
+"""
+
 import json
 import importlib.util
 import os
