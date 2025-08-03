@@ -7,20 +7,13 @@ from tkinter import filedialog
 from rich.console import Console
 from rich.panel import Panel
 
-# Create a console object for beautiful output
+# console object for rich text output
 console = Console()
 
 def run_tk_dialog(dialog_func, *args, **kwargs):
     """
-    Safely run a tkinter dialog, ensuring the window is on top and the root window is properly destroyed.
-
-    Parameters:
-        dialog_func (callable): The tkinter dialog function to call (e.g., filedialog.askopenfilename).
-        *args: Positional arguments to pass to the dialog function.
-        **kwargs: Keyword arguments to pass to the dialog function.
-
-    Returns:
-        The result returned by the dialog function (e.g., selected file path).
+    Helper for recipe functions to run tkinter dialogs (like file choosers) 
+    with proper window focus and cleanup.
     """
     root = tk.Tk()
     root.withdraw()
@@ -104,48 +97,52 @@ def prompt_for_parameters(step, func_params):
                     console.print("[bold red]Input cannot be empty. Please try again.[/bold red]")
     return call_args
 
+def inject_dependencies(call_args, func_params):
+    """Inject standard dependencies into function call arguments."""
+    if 'console' in func_params:
+        call_args['console'] = console
+    if 'run_tk_dialog' in func_params:
+        call_args['run_tk_dialog'] = run_tk_dialog
+
+def add_json_parameters(step, call_args, func_params):
+    """Add any parameters from the JSON step that match function parameters."""
+    for param_name, param_value in step.items():
+        if param_name in func_params and param_name not in call_args:
+            call_args[param_name] = param_value
+
 def execute_step(step, recipe_module):
-    """
-    Execute a single step in the recipe, handling function calls and user prompts.
-
-    Parameters:
-        step (dict): The current recipe step.
-        recipe_module (module or None): The loaded Python module, or None if not present.
-
-    Returns:
-        bool: True if the step was successful, False otherwise.
-    """
-    # If there's no function, the step is just text. It's automatically successful.
+    """Execute a single step in the recipe, handling function calls and user prompts."""
+    # Text-only steps are automatically successful
     if not step.get('function_name'):
         return True
-    # If a function is required, but we have no module, it's an error.
+    
+    # Check if we have the required module
     if not recipe_module:
         console.print(f"\n[bold red]Configuration Error:[/] Step requires function '{step['function_name']}', but no code file was found.\n")
         return None
+    
     try:
-        func_to_call = getattr(recipe_module, step['function_name'])
-        func_params = inspect.signature(func_to_call).parameters
+        func = getattr(recipe_module, step['function_name'])
+        func_params = inspect.signature(func).parameters
         call_args = {}
-        # Inject dependencies
-        if 'console' in func_params:
-            call_args['console'] = console
-        if 'run_tk_dialog' in func_params:
-            call_args['run_tk_dialog'] = run_tk_dialog
-        # Prompt for parameters
+        
+        # Build function arguments
+        inject_dependencies(call_args, func_params)
+        
         prompt_args = prompt_for_parameters(step, func_params)
         if prompt_args is None:
             return False
         call_args.update(prompt_args)
-        # Pass any other parameters directly from JSON
-        for param_name, param_value in step.items():
-            if param_name in func_params and param_name not in call_args:
-                call_args[param_name] = param_value
-        # Function Execution
-        if func_to_call(**call_args):
+        
+        add_json_parameters(step, call_args, func_params)
+        
+        # Execute the function
+        if func(**call_args):
             return True
         else:
             console.print("[bold yellow]The step failed. Please review the output and try again.[/bold yellow]\n")
             return False
+            
     except AttributeError:
         console.print(f"\n[bold red]FATAL ERROR:[/] Function [yellow]'{step['function_name']}'[/yellow] not found in the module! Cannot proceed.\n")
         return None
@@ -153,51 +150,54 @@ def execute_step(step, recipe_module):
         console.print(f"\n[bold red]ERROR:[/] An unexpected error occurred in function '{step['function_name']}': {e}\n")
         return False
 
+def show_recipe_header(title):
+    """Display the recipe start banner."""
+    console.print(f"[bold green]--- Starting Recipe [bold white]{title}[/bold white] ---[/bold green]")
+    console.print("-" * 25)
+
+def show_step(step_index, step):
+    """Display a recipe step in a formatted panel."""
+    console.print(Panel(
+        f"{step.get('statement', '')}",
+        title=f"[yellow bold]Step {step_index}[/yellow bold]",
+        border_style="blue"
+    ))
+
+def run_single_step(step, recipe_module, step_index):
+    """Run a single step with retry logic. Returns True if should continue recipe."""
+    while True:
+        result = execute_step(step, recipe_module)
+        
+        if result is None:  # Fatal error
+            console.print("[bold red]Recipe execution aborted due to fatal error.[/bold red]")
+            return False
+        elif result:  # Success
+            if step.get('prompt_for'):
+                console.print(f"[bold green]Step {step_index} completed successfully![/bold green]")
+            return True
+        else:  # Failure, retry
+            console.print("[bold yellow]Retrying step...[/bold yellow]")
+
 def run_recipe(recipe_path: str, module_path: str):
-    """
-    Executes a recipe file step-by-step, guiding the user with rich formatting.
-    Dynamically loads functions from an optional associated module.
-
-    Parameters:
-        recipe_path (str): Path to the recipe JSON file.
-        module_path (str): Path to the associated Python module file (optional).
-
-    Returns:
-        None
-    """
+    """Execute a recipe file step-by-step with user guidance."""
     recipe = load_recipe_json(recipe_path)
     if recipe is None:
         return
+    
     recipe_module = load_recipe_module(module_path)
     title = recipe[0].get('title', 'Untitled Recipe')
-    console.print(f"[bold green]--- Starting Recipe [bold white]{title}[/bold white] ---[/bold green]")
-    console.print("-" * 25)
-    current_step_index = 1
-    while current_step_index < len(recipe):
-        step = recipe[current_step_index]
-        console.print(Panel(
-            f"{step.get('statement', '')}",
-            title=f"[yellow bold]Step {current_step_index}[/yellow bold]",
-            border_style="blue"
-        ))
-        step_success = False
-        while not step_success:
-            step_success = execute_step(step, recipe_module)
-            if step_success is None:
-                # Fatal error, abort recipe
-                console.print("[bold red]Recipe execution aborted due to fatal error.[/bold red]")
-                return
-            elif step_success:
-                if step.get('prompt_for'):
-                    console.print(f"[bold green]Step {current_step_index} completed successfully![/bold green]")
-            else:
-                console.print("[bold yellow]Retrying step...[/bold yellow]")
-            if not step_success:
-                # If the step failed, allow retry
-                continue
-        current_step_index += 1
-        if current_step_index < len(recipe):
+    show_recipe_header(title)
+    
+    for step_index in range(1, len(recipe)):
+        step = recipe[step_index]
+        show_step(step_index, step)
+        
+        if not run_single_step(step, recipe_module, step_index):
+            return  # Fatal error occurred
+        
+        if step_index < len(recipe) - 1:  # Not the last step
             console.input("\n[dim]Press Enter to continue...[/dim]")
+    
     console.print("\n[bold green]--- Recipe Complete ---")
 
 if __name__ == "__main__":
