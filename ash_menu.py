@@ -58,8 +58,9 @@ from rich.columns import Columns
 import execute_recipe
 import importlib.util
 import inspect
+from __version__ import __version__
 
-software_version = "Actionable Sequence Helper (ASH) v1.0"
+software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
 console = Console()
 RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
 
