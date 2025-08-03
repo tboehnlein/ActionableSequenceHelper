@@ -61,7 +61,6 @@ import tkinter as tk
 from tkinter import filedialog
 from rich.console import Console
 from rich.panel import Panel
-from __version__ import __version__
 
 # console object for rich text output
 console = Console()
