@@ -43,7 +43,7 @@ MENU FEATURES:
 DIRECTORY STRUCTURE:
     project/
     ├── ash_menu.py          # This file
-    ├── controller.py        # Recipe execution engine
+    ├── execute_recipe.py    # Recipe execution engine
     └── recipes/             # Recipe directory
         ├── recipe1.json     # Recipe definition
         ├── recipe1.py       # Optional Python functions
@@ -55,7 +55,7 @@ import json
 from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
-import controller
+import execute_recipe
 import importlib.util
 import inspect
 
@@ -234,7 +234,7 @@ def handle_recipe_selection(selected_recipe_data):
     recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
     
     try:
-        controller.run_recipe(recipe_path, module_path)
+        execute_recipe.run_recipe(recipe_path, module_path)
     except SystemExit:
         return False  # Exit the menu
     except Exception as e:

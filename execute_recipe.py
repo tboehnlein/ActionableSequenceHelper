@@ -49,7 +49,7 @@ ERROR HANDLING:
 USAGE:
     This module is typically imported by ash_menu.py, but can be used directly:
     
-    from controller import run_recipe
+    from execute_recipe import run_recipe
     run_recipe("path/to/recipe.json", "path/to/recipe.py")
 """
 

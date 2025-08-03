@@ -28,7 +28,7 @@ ASH is built around the concept of **recipes**. A recipe consists of two parts:
 1.  **A JSON file (`.json`)**: This is the core of the recipe. It defines the sequence of steps, including the instructions to show the user and (optionally) the name of a Python function to run.
 2.  **A Python file (`.py`)**: This file is **optional**. It contains the actual Python functions that are called by the recipe steps. If a recipe is just a simple checklist, you don't need a `.py` file.
 
-When you select a recipe from the menu, the controller reads the JSON file and proceeds step-by-step, displaying the instructions and executing any associated code.
+When you select a recipe from the menu, the execution engine reads the JSON file and proceeds step-by-step, displaying the instructions and executing any associated code.
 
 ## Creating Your Own Recipes
 
@@ -43,11 +43,11 @@ The JSON file is a list of steps. The first item in the list is special; it cont
 *   `function_name` (optional): The name of the function to run from the corresponding `.py` file.
 *   `prompt_for` (optional): A dictionary to prompt the user for input. The key is the function parameter name, and the value is the prompt text.
 
-**Example: `crash.json`**
+**Example: `example.json`**
 ```json
 [
     {
-        "title": "Crash Course Recipe",
+        "title": "Example Window Recipe",
         "description": "A simple recipe to test file selection."
     },
     {
@@ -64,11 +64,11 @@ The JSON file is a list of steps. The first item in the list is special; it cont
 ]
 ```
 
-### The Recipe Code File (`crash.py`)
+### The Recipe Code File (`example.py`)
 
 This file contains the functions your recipe will execute.
 
-**Example: `crash.py`**
+**Example: `example.py`**
 ```python
 from tkinter import filedialog
 from rich.console import Console
@@ -90,7 +90,7 @@ def OpenFileWindow(title: str, console: Console, run_tk_dialog):
 
 ### Injected Dependencies
 
-To make recipe creation easier and safer, the controller can automatically "inject" helpful utilities into your functions if they are listed as parameters:
+To make recipe creation easier and safer, the execution engine can automatically "inject" helpful utilities into your functions if they are listed as parameters:
 
 *   `console`: The application's `rich.console.Console` object for consistent, styled output.
 *   `run_tk_dialog`: A safe wrapper for running `tkinter` dialogs. It handles creating and destroying the `tkinter` root window and ensures the dialog appears on top of other windows.
