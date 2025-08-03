@@ -2,6 +2,9 @@
 
 ASH is a flexible, command-line tool designed to guide users through a series of steps defined in "recipes." It's perfect for standardizing complex workflows, creating interactive checklists, or automating multi-step processes that require user input or actions at specific points.
 
+## Interactive Menu
+![Menu Screenshot](images/menu.png)
+
 ## Features
 
 *   **Recipe-Driven Workflow**: Define a sequence of steps in simple JSON files.
