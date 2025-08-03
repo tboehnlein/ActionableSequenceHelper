@@ -1,0 +1,35 @@
+[
+  {
+    "title": "File Processing Example",
+    "description": "Demonstrates recipe features: text steps, user prompts, file dialogs, and error handling"
+  },
+  {
+    "statement": "Welcome to the ASH Example Recipe! This will demonstrate the key features of the system."
+  },
+  {
+    "statement": "Step 1: This is a simple text-only step. No Python function needed - just press Enter to continue."
+  },
+  {
+    "statement": "Step 2: Now we'll prompt you for some information.",
+    "function_name": "get_user_info",
+    "prompt_for": {
+      "name": "What's your name?",
+      "project": "What project are you working on?"
+    }
+  },
+  {
+    "statement": "Step 3: Let's open a file dialog to select a file (or cancel if you prefer).",
+    "function_name": "select_file"
+  },
+  {
+    "statement": "Step 4: This step will demonstrate error handling - it will fail the first time so you can see retry logic.",
+    "function_name": "demonstrate_retry"
+  },
+  {
+    "statement": "Step 5: Finally, we'll show a summary of what happened.",
+    "function_name": "show_summary"
+  },
+  {
+    "statement": "Congratulations! You've completed the ASH example recipe. Check out the recipes/ folder for more examples, or create your own!"
+  }
+]

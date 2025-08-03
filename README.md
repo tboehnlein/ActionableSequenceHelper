@@ -13,6 +13,24 @@ ASH is a flexible, command-line tool designed to guide users through a series of
 
 ## Getting Started
 
+### Quick Installation
+
+See [INSTALL.md](INSTALL.md) for detailed installation instructions.
+
+### Try the Examples
+
+Before creating your own recipes, check out the comprehensive examples in the `examples/` folder:
+
+```bash
+# Copy the example to your recipes folder
+cp examples/example.* recipes/
+python ash_menu.py
+```
+
+The example recipe demonstrates all major ASH features including user prompts, file dialogs, error handling, and rich formatting.
+
+### Running ASH
+
 To run the application, simply execute the `ash_menu.py` script from your terminal:
 
 ```bash
