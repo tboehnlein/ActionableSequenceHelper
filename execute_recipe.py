@@ -181,6 +181,9 @@ def inject_dependencies(call_args, func_params, recipe_context):
 def add_json_parameters(step, call_args, func_params):
     """Add any parameters from the JSON step that match function parameters."""
     for param_name, param_value in step.items():
+        # Skip internal properties that start with underscore
+        if param_name.startswith('_'):
+            continue
         if param_name in func_params and param_name not in call_args:
             call_args[param_name] = param_value
 
@@ -252,9 +255,12 @@ def show_recipe_header(title):
 
 def show_step(step_index, step):
     """Display a recipe step in a formatted panel."""
+    # Use the original step name if available, otherwise fall back to step number
+    step_name = step.get('_step_name', f"Step {step_index}")
+    
     console.print(Panel(
         f"{step.get('statement', '')}",
-        title=f"[yellow bold]Step {step_index}[/yellow bold]",
+        title=f"[yellow bold]{step_name}[/yellow bold]",
         border_style="blue"
     ))
 
@@ -282,6 +288,42 @@ def run_single_step(step, recipe_module, step_index, recipe_context):
                 console.print(f"[bold red]Step {step_index} failed after {max_retries + 1} attempts. Aborting recipe.[/bold red]")
                 console.input("\n[dim]Press Enter to return to the main menu...[/dim]")
                 return False
+
+def run_recipe_from_data(recipe_data: list, module_path: str):
+    """Execute a recipe from already-loaded data (used by versioning system)."""
+    if recipe_data is None:
+        return
+    
+    recipe_module = load_recipe_module(module_path)
+    title = recipe_data[0].get('title', 'Untitled Recipe') if recipe_data else 'Untitled Recipe'
+    
+    # Initialize recipe context for sharing data between steps
+    recipe_context = {
+        'variables': {},      # General variable storage
+        'files': {},         # File paths and handles
+        'settings': {},      # Configuration data
+        'results': {},       # Function return values
+        'metadata': {        # Recipe metadata
+            'title': title,
+            'start_time': None,
+            'current_step': 0
+        }
+    }
+    
+    show_recipe_header(title)
+    
+    for step_index in range(1, len(recipe_data)):
+        step = recipe_data[step_index]
+        recipe_context['metadata']['current_step'] = step_index
+        show_step(step_index, step)
+        
+        if not run_single_step(step, recipe_module, step_index, recipe_context):
+            return  # Fatal error occurred
+        
+        if step_index < len(recipe_data) - 1:  # Not the last step
+            console.input("\n[dim]Press Enter to continue...[/dim]")
+    
+    console.print("\n[bold green]--- Recipe Complete ---")
 
 def run_recipe(recipe_path: str, module_path: str):
     """Execute a recipe file step-by-step with user guidance."""

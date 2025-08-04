@@ -12,13 +12,9 @@ USAGE:
     in an interactive menu. Users can select recipes by number or name.
 
 RECIPE FORMAT:
-    Recipes are JSON arrays where:
-    - First element: {"title": "Recipe Name", "description": "What it does"}
-    - Subsequent elements: Recipe steps with optional function calls
-
-    Example recipe.json:
+    v1.0 (Legacy - array format):
     [
-        {"title": "My Recipe", "description": "Does something useful"},
+        {"title": "Recipe Name", "description": "What it does"},
         {"statement": "First step - just text"},
         {
             "statement": "Second step - calls a function",
@@ -26,12 +22,25 @@ RECIPE FORMAT:
             "prompt_for": {"param": "Enter value for param"}
         }
     ]
+    
+    v1.1 (Current - flat object format):
+    {
+        "version": "1.1",
+        "title": "Recipe Name",
+        "description": "What it does",
+        "step1": {"statement": "First step - just text"},
+        "step2": {
+            "statement": "Second step - calls a function",
+            "function_name": "my_function",
+            "prompt_for": {"param": "Enter value for param"}
+        }
+    }
 
 PYTHON MODULES:
     Optional Python files (same name as JSON) can provide custom functions:
     - Functions are called based on "function_name" in recipe steps
     - Parameters can be prompted from user via "prompt_for"
-    - Special dependencies are auto-injected: 'console', 'run_tk_dialog'
+    - Special dependencies are auto-injected: 'console', 'run_tk_dialog', 'recipe_context'
 
 MENU FEATURES:
     - Q: Quit the application
@@ -59,10 +68,62 @@ import execute_recipe
 import importlib.util
 import inspect
 from __version__ import __version__
+import recipe_version
 
 software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
 console = Console()
 RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
+
+def verify_recipe_with_execution_format(execution_recipe, module_path):
+    """
+    Verify that all functions and prompt_for parameters in the execution format recipe exist in the Python module.
+    Returns a list of error messages (empty if no errors).
+    """
+    errors = []
+    if not execution_recipe or not isinstance(execution_recipe, list):
+        errors.append("Invalid recipe format")
+        return errors
+    
+    module = None
+    if os.path.exists(module_path):
+        try:
+            module_name = os.path.splitext(os.path.basename(module_path))[0]
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            if spec and spec.loader:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+        except Exception as e:
+            errors.append(f"Python load error: {e}")
+    
+    for idx, step in enumerate(execution_recipe[1:], start=2):
+        func_name = step.get('function_name')
+        if func_name:
+            if not module:
+                errors.append(f"Step {idx}: Missing Python file for function '{func_name}'")
+                continue
+            func = getattr(module, func_name, None)
+            if not func:
+                errors.append(f"Step {idx}: Function '{func_name}' not found in module")
+                continue
+            sig = inspect.signature(func)
+            func_params = sig.parameters
+            prompt_for = step.get('prompt_for', {})
+            
+            # Check prompt_for parameters exist in function
+            for param in prompt_for:
+                if param not in func_params:
+                    errors.append(f"Step {idx}: Parameter '{param}' in prompt_for not found in function '{func_name}'")
+            
+            # Check for unknown parameters (excluding injected dependencies and internal properties)
+            injected_params = {'console', 'run_tk_dialog', 'recipe_context'}
+            step_params = set(step.keys()) - {'statement', 'function_name', 'prompt_for'}
+            for param in step_params:
+                # Skip internal properties that start with underscore
+                if param.startswith('_'):
+                    continue
+                if param not in func_params and param not in injected_params:
+                    errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
+    return errors
 
 def verify_recipe(recipe_path, module_path):
     """
@@ -105,24 +166,27 @@ def verify_recipe(recipe_path, module_path):
                 if param not in func_params:
                     errors.append(f"Step {idx}: Parameter '{param}' in prompt_for not found in function '{func_name}'")
             
-            # Check for unknown parameters (excluding injected dependencies)
+            # Check for unknown parameters (excluding injected dependencies and internal properties)
             injected_params = {'console', 'run_tk_dialog', 'recipe_context'}
             step_params = set(step.keys()) - {'statement', 'function_name', 'prompt_for'}
             for param in step_params:
+                # Skip internal properties that start with underscore
+                if param.startswith('_'):
+                    continue
                 if param not in func_params and param not in injected_params:
                     errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
     return errors
 
 def load_recipe_details(recipe_files):
     """
-    Loads recipe details from JSON files for menu display, with verification.
+    Loads recipe details from JSON files for menu display, with versioning support.
 
     Parameters:
         recipe_files (list of str): List of recipe JSON filenames in the recipes directory.
 
     Returns:
         tuple: (menu_items, recipes_data)
-            menu_items (list of dict): Each dict contains filename, title, and description for a recipe.
+            menu_items (list of dict): Each dict contains filename, title, description, and version info for a recipe.
             recipes_data (dict): Mapping of filename to loaded recipe data.
     """
     menu_items = []
@@ -132,17 +196,29 @@ def load_recipe_details(recipe_files):
             recipe_path = os.path.join(RECIPES_DIR, recipe_file)
             module_name = os.path.splitext(recipe_file)[0]
             module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            with open(recipe_path, 'r') as f:
-                recipe = json.load(f)
-                recipes_data[recipe_file] = recipe
-                load_errors = verify_recipe(recipe_path, module_path)
-                if recipe and isinstance(recipe, list) and len(recipe) > 0:
-                    title = recipe[0].get('title', f"Recipe {i + 1}")
-                    description = recipe[0].get('description', "No description available.")
+            
+            # Load recipe with version handling
+            try:
+                execution_recipe, version_info, was_upgraded = recipe_version.process_recipe_with_versioning(
+                    recipe_path, auto_upgrade=True
+                )
+                recipes_data[recipe_file] = execution_recipe
+                
+                # Extract metadata (now works with any version)
+                if execution_recipe and isinstance(execution_recipe, list) and len(execution_recipe) > 0:
+                    metadata = execution_recipe[0]
+                    title = metadata.get('title', f"Recipe {i + 1}")
+                    description = metadata.get('description', "No description available.")
+                    
+                    # Verify recipe functions
+                    load_errors = verify_recipe_with_execution_format(execution_recipe, module_path)
+                    
                     menu_item = {
                         "filename": recipe_file,
                         "title": title,
-                        "description": description
+                        "description": description,
+                        "version_info": version_info,
+                        "was_upgraded": was_upgraded
                     }
                     if load_errors:
                         menu_item["load_error"] = "\n".join(load_errors)
@@ -151,20 +227,44 @@ def load_recipe_details(recipe_files):
                     menu_items.append({
                         "filename": recipe_file,
                         "title": f"{recipe_file} - No valid steps found.",
-                        "description": ""
+                        "description": "",
+                        "version_info": "unknown",
+                        "was_upgraded": False
                     })
+            except Exception as version_error:
+                # Fallback to legacy loading for compatibility
+                console.print(f"[yellow]Warning: Version processing failed for {recipe_file}, using legacy mode: {version_error}[/yellow]")
+                with open(recipe_path, 'r') as f:
+                    recipe = json.load(f)
+                    recipes_data[recipe_file] = recipe
+                    load_errors = verify_recipe(recipe_path, module_path)
+                    if recipe and isinstance(recipe, list) and len(recipe) > 0:
+                        title = recipe[0].get('title', f"Recipe {i + 1}")
+                        description = recipe[0].get('description', "No description available.")
+                        menu_item = {
+                            "filename": recipe_file,
+                            "title": title,
+                            "description": description,
+                            "version_info": "v1.0 (legacy)",
+                            "was_upgraded": False
+                        }
+                        if load_errors:
+                            menu_item["load_error"] = "\n".join(load_errors)
+                        menu_items.append(menu_item)
         except Exception as e:
             console.print(f"[bold red]Error reading {recipe_file}: {e}[/bold red]")
             menu_items.append({
                 "filename": recipe_file,
                 "title": f"{recipe_file} - Error loading",
-                "description": str(e)
+                "description": str(e),
+                "version_info": "error",
+                "was_upgraded": False
             })
     return menu_items, recipes_data
 
 def format_menu_panels(menu_items_data):
     """
-    Create a list of rich Panel objects for each recipe menu item, showing LOAD ERROR if present.
+    Create a list of rich Panel objects for each recipe menu item, showing version info and LOAD ERROR if present.
 
     Parameters:
         menu_items_data (list of dict): List of recipe metadata dicts.
@@ -174,8 +274,19 @@ def format_menu_panels(menu_items_data):
     """
     panels = []
     for i, item in enumerate(menu_items_data):
+        # Version info display
+        version_info = item.get('version_info', 'unknown')
+        version_display = f"\n[dim]{version_info}[/dim]"
+        
+        # Upgrade indicator
+        if item.get('was_upgraded', False):
+            version_display += " [green]✓ Upgraded[/green]"
+        
+        # Error display
         error_text = f"\n[bold red]LOAD ERROR:\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
-        panels.append(Panel(f"[bold]{i+1}.) {item['title']}\n[/bold]{item['description']}{error_text}", expand=True))
+        
+        panel_content = f"[bold]{i+1}.) {item['title']}\n[/bold]{item['description']}{version_display}{error_text}"
+        panels.append(Panel(panel_content, expand=True))
     return panels
 
 def find_recipe_by_choice(choice, menu_items_data):
@@ -229,22 +340,29 @@ def show_menu_display(menu_items_data):
         menu_columns,
         title=f"[bold blue]Welcome to {software_version}![/bold blue]",
         border_style="blue",
-        subtitle="Enter Q to quit or R to refresh."
+        subtitle="Enter Q to quit, R to refresh, or V for version info."
     ))
 
 def get_user_choice():
     """Get and return user input from the menu prompt."""
-    return console.input("[bold green]Enter recipe number, name, R to refresh, or Q to quit: [/bold green]").strip()
+    return console.input("[bold green]Enter recipe number, name, R to refresh, V for version info, or Q to quit: [/bold green]").strip()
 
-def handle_recipe_selection(selected_recipe_data):
+def handle_recipe_selection(selected_recipe_data, recipes_data):
     """Execute the selected recipe and handle any errors."""
     show_recipe_info(selected_recipe_data)
     module_name = os.path.splitext(selected_recipe_data['filename'])[0]
     module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-    recipe_path = os.path.join(RECIPES_DIR, selected_recipe_data['filename'])
+    recipe_filename = selected_recipe_data['filename']
+    
+    # Get the execution-ready recipe data
+    execution_recipe = recipes_data.get(recipe_filename)
+    if not execution_recipe:
+        console.print("[bold red]Error: Recipe data not found[/bold red]")
+        return True
     
     try:
-        execute_recipe.run_recipe(recipe_path, module_path)
+        # Use the execution engine with the normalized recipe data
+        execute_recipe.run_recipe_from_data(execution_recipe, module_path)
     except SystemExit:
         return False  # Exit the menu
     except Exception as e:
@@ -257,7 +375,7 @@ def display_menu():
     while True:
         # Load and display menu
         recipe_files = [f for f in os.listdir(RECIPES_DIR) if f.endswith(".json")]
-        menu_items_data, _ = load_recipe_details(recipe_files)
+        menu_items_data, recipes_data = load_recipe_details(recipe_files)
         show_menu_display(menu_items_data)
         
         # Get user input
@@ -269,6 +387,10 @@ def display_menu():
             break
         if choice.lower() == 'r':
             continue  # Refresh menu
+        if choice.lower() == 'v':
+            recipe_version.show_version_info()
+            console.input("\n[dim]Press Enter to return to menu...[/dim]")
+            continue
         
         # Handle recipe selection
         selected_recipe_data, error_message = find_recipe_by_choice(choice, menu_items_data)
@@ -277,7 +399,7 @@ def display_menu():
             continue
             
         if selected_recipe_data:
-            if not handle_recipe_selection(selected_recipe_data):
+            if not handle_recipe_selection(selected_recipe_data, recipes_data):
                 break  # Exit if recipe execution requests it
 
 def main():
