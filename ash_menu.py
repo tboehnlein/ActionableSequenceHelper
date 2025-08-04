@@ -99,9 +99,18 @@ def verify_recipe(recipe_path, module_path):
             sig = inspect.signature(func)
             func_params = sig.parameters
             prompt_for = step.get('prompt_for', {})
+            
+            # Check prompt_for parameters exist in function
             for param in prompt_for:
                 if param not in func_params:
                     errors.append(f"Step {idx}: Parameter '{param}' in prompt_for not found in function '{func_name}'")
+            
+            # Check for unknown parameters (excluding injected dependencies)
+            injected_params = {'console', 'run_tk_dialog', 'recipe_context'}
+            step_params = set(step.keys()) - {'statement', 'function_name', 'prompt_for'}
+            for param in step_params:
+                if param not in func_params and param not in injected_params:
+                    errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
     return errors
 
 def load_recipe_details(recipe_files):

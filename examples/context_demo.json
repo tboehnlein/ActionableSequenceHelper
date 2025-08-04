@@ -1,0 +1,32 @@
+[
+  {
+    "title": "Recipe Context Demo",
+    "description": "Demonstrates sharing data between recipe steps using recipe_context"
+  },
+  {
+    "statement": "Step 1: We'll collect some user information and store it for later use."
+  },
+  {
+    "statement": "Please provide your details:",
+    "function_name": "collect_user_info",
+    "prompt_for": {
+      "name": "What's your name?",
+      "project": "What project are you working on?"
+    }
+  },
+  {
+    "statement": "Step 2: Let's select a file and remember the path for processing.",
+    "function_name": "select_file_to_process"
+  },
+  {
+    "statement": "Step 3: Now we'll process the file using the information collected earlier.",
+    "function_name": "process_selected_file"
+  },
+  {
+    "statement": "Step 4: Finally, we'll show a summary of everything we did.",
+    "function_name": "show_recipe_summary"
+  },
+  {
+    "statement": "Recipe complete! Notice how data was shared between all the steps."
+  }
+]
