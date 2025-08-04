@@ -274,13 +274,17 @@ def format_menu_panels(menu_items_data):
     """
     panels = []
     for i, item in enumerate(menu_items_data):
-        # Version info display
+        # Version info display - only show if not latest version or if there are errors
         version_info = item.get('version_info', 'unknown')
-        version_display = f"\n[dim]{version_info}[/dim]"
+        version_display = ""
         
-        # Upgrade indicator
-        if item.get('was_upgraded', False):
-            version_display += " [green]✓ Upgraded[/green]"
+        # Show version info only if it's not the latest version (v1.1) or if there was an upgrade
+        if version_info != 'v1.1' or item.get('was_upgraded', False):
+            version_display = f"\n[dim]{version_info}[/dim]"
+            
+            # Upgrade indicator
+            if item.get('was_upgraded', False):
+                version_display += " [green]✓ Upgraded[/green]"
         
         # Error display
         error_text = f"\n[bold red]LOAD ERROR:\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
