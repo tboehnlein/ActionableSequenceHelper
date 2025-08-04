@@ -1,4 +1,4 @@
-# Actionable Sequence Helper (ASH)
+# Actionable Sequence Helper (ASH) v1.1
 
 ASH is a flexible, command-line tool designed to guide users through a series of steps defined in "recipes." It's perfect for standardizing complex workflows, creating interactive checklists, or automating multi-step processes that require user input or actions at specific points.
 
@@ -8,11 +8,14 @@ ASH is a flexible, command-line tool designed to guide users through a series of
 ## Features
 
 *   **Recipe-Driven Workflow**: Define a sequence of steps in simple JSON files.
+*   **Custom Step Display**: Each step can have unique title to help user understand step purpose.
 *   **Interactive Steps**: Recipes can be simple checklists or can execute custom Python code.
 *   **Dynamic Code Loading**: Automatically loads and runs functions from a Python file associated with your recipe.
 *   **User-Friendly Interface**: Built with `rich` for a clean, modern terminal experience.
 *   **GUI Integration**: Provides a safe, built-in helper to launch GUI dialogs (like file pickers) from your recipes.
-*   **Private Recipe Management**: Designed to keep your personal recipes separate from the main application repository.
+*   **Recipe Context**: Share data between steps using the built-in `recipe_context` system.
+*   **Version Management**: Automatic upgrades from legacy formats with backup preservation.
+*   **Enhanced Error Handling**: Detailed error reporting with file names and line numbers.
 
 ## Getting Started
 
@@ -57,64 +60,139 @@ To create a new recipe, you'll typically create two files in the `recipes/` dire
 
 ### The Recipe JSON File (`my_recipe.json`)
 
-The JSON file is a list of steps. The first item in the list is special; it contains the `title` and `description` for the menu. Subsequent items are the steps themselves.
+The JSON file uses the modern v1.1 flat format. Simply add your title, description, and step properties directly to the object.
+
+**Key fields for a recipe:**
+*   `version`: Always set to "1.1" for the current format
+*   `title`: The recipe name displayed in the menu
+*   `description`: Brief description of what the recipe does
+*   `step1`, `step2`, `step3`, etc.: Your recipe steps as direct properties
 
 **Key fields for a step:**
 *   `statement`: The instruction or information to display to the user for this step.
 *   `function_name` (optional): The name of the function to run from the corresponding `.py` file.
 *   `prompt_for` (optional): A dictionary to prompt the user for input. The key is the function parameter name, and the value is the prompt text.
 
-**Example: `example.json`**
+**Example: `my_recipe.json`**
 ```json
-[
-    {
-        "title": "Example Window Recipe",
-        "description": "A simple recipe to test file selection."
-    },
-    {
-        "statement": "This step will open a file dialog. Please provide a title for the window.",
-        "function_name": "OpenFileWindow",
-        "prompt_for": {
-            "title": "Enter the title for the file window"
-        }
-    },
-    {
-        "statement": "Recipe complete! You can add more steps here.",
-        "function_name": null
+{
+  "version": "1.1",
+  "title": "File Processing Example",
+  "description": "Demonstrates recipe features: text steps, user prompts, and file dialogs",
+  "step1": {
+    "statement": "Welcome to ASH! This step just displays text - press Enter to continue."
+  },
+  "step2": {
+    "statement": "Now we'll prompt you for some information.",
+    "function_name": "get_user_info",
+    "prompt_for": {
+      "name": "What's your name?",
+      "project": "What project are you working on?"
     }
-]
+  },
+  "step3": {
+    "statement": "Let's open a file dialog to select a file.",
+    "function_name": "select_file"
+  },
+  "step4": {
+    "statement": "Recipe complete! Check the console output above."
+  }
+}
 ```
 
-### The Recipe Code File (`example.py`)
+### The Recipe Code File (`my_recipe.py`)
 
 This file contains the functions your recipe will execute.
 
-**Example: `example.py`**
+**Example: `my_recipe.py`**
 ```python
 from tkinter import filedialog
-from rich.console import Console
 
-def OpenFileWindow(title: str, console: Console, run_tk_dialog):
+def get_user_info(name: str, project: str, console, recipe_context):
     """
-    Opens a file dialog window using the injected utility.
+    Collect user information and store it in recipe context.
     """
-    # Use the injected helper to run the dialog
-    file_path = run_tk_dialog(filedialog.askopenfilename, title=title)
+    console.print(f"[bold green]Hello {name}![/bold green]")
+    console.print(f"[cyan]Working on project: {project}[/cyan]")
+    
+    # Store data for later steps
+    recipe_context['variables']['user_name'] = name
+    recipe_context['variables']['project_name'] = project
+    
+    return True
+
+def select_file(console, run_tk_dialog, recipe_context):
+    """
+    Open a file dialog and display the selected file.
+    """
+    # Get user name from previous step
+    user_name = recipe_context['variables'].get('user_name', 'User')
+    
+    file_path = run_tk_dialog(
+        filedialog.askopenfilename,
+        title=f"Select a file for {user_name}"
+    )
     
     if file_path:
         console.print(f"[bold green]Selected file:[/] [italic white]{file_path}[/italic white]")
-        return True  # Returning True signals success
+        recipe_context['variables']['selected_file'] = file_path
+        return True
     else:
         console.print("[bold red]No file selected.[/bold red]")
-        return False # Returning False signals failure
+        return False
 ```
-
 ### Injected Dependencies
 
 To make recipe creation easier and safer, the execution engine can automatically "inject" helpful utilities into your functions if they are listed as parameters:
 
 *   `console`: The application's `rich.console.Console` object for consistent, styled output.
 *   `run_tk_dialog`: A safe wrapper for running `tkinter` dialogs. It handles creating and destroying the `tkinter` root window and ensures the dialog appears on top of other windows.
+*   `recipe_context`: A shared dictionary for storing data between steps with structured sections:
+    *   `recipe_context['variables']`: For storing user data, file paths, and other values
+    *   `recipe_context['metadata']`: For recipe information and step tracking
+
+### Recipe Context Example
+
+The `recipe_context` allows you to share data between steps:
+
+```python
+def step_one(console, recipe_context):
+    # Store data for later steps
+    recipe_context['variables']['user_input'] = "some value"
+    recipe_context['variables']['file_path'] = "/path/to/file"
+
+def step_two(console, recipe_context):
+    # Access data from previous steps
+    user_input = recipe_context['variables'].get('user_input')
+    file_path = recipe_context['variables'].get('file_path')
+    console.print(f"Processing {file_path} with {user_input}")
+```
+
+## Recipe Format Evolution
+
+ASH supports multiple recipe formats for backward compatibility:
+
+### v1.1 (Current - Flat Format)
+```json
+{
+  "version": "1.1",
+  "title": "Recipe Name",
+  "description": "What it does",
+  "step1": {"statement": "First step"},
+  "step2": {"statement": "Second step"}
+}
+```
+
+### v1.0 (Legacy - Array Format)
+```json
+[
+  {"title": "Recipe Name", "description": "What it does"},
+  {"statement": "First step"},
+  {"statement": "Second step"}
+]
+```
+
+**Automatic Upgrades**: Legacy v1.0 recipes are automatically upgraded to v1.1 format when loaded, with backups preserved.
 
 ## Managing Your Recipes Privately
 

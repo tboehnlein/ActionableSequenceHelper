@@ -1,35 +1,27 @@
-[
-  {
-    "title": "File Processing Example",
-    "description": "Demonstrates recipe features: text steps, user prompts, file dialogs, and error handling"
-  },
-  {
-    "statement": "Welcome to the ASH Example Recipe! This will demonstrate the key features of the system."
-  },
-  {
-    "statement": "Step 1: This is a simple text-only step. No Python function needed - just press Enter to continue."
-  },
-  {
-    "statement": "Step 2: Now we'll prompt you for some information.",
-    "function_name": "get_user_info",
-    "prompt_for": {
-      "name": "What's your name?",
-      "project": "What project are you working on?"
+{
+    "version": "1.1",
+    "title": "Simple ASH Example",
+    "description": "A clean example demonstrating core ASH v1.1 features with only supported properties",
+    "step1": {
+        "statement": "Welcome! This example demonstrates ASH v1.1 with user prompts, function calls, and error handling."
+    },
+    "step2": {
+        "statement": "Let's collect some basic information about you.",
+        "prompt_for": {
+            "name": "What's your name?",
+            "project": "What project are you working on?"
+        },
+        "function_name": "get_user_info"
+    },
+    "step3": {
+        "statement": "Now we'll select a file to demonstrate GUI integration.",
+        "function_name": "select_file"
+    },
+    "step4": {
+        "statement": "This step will intentionally fail once, then succeed on retry to show error handling.",
+        "function_name": "demonstrate_retry"
+    },
+    "step5": {
+        "statement": "Great! You've completed the ASH example and seen all the core features."
     }
-  },
-  {
-    "statement": "Step 3: Let's open a file dialog to select a file (or cancel if you prefer).",
-    "function_name": "select_file"
-  },
-  {
-    "statement": "Step 4: This step will demonstrate error handling - it will fail the first time so you can see retry logic.",
-    "function_name": "demonstrate_retry"
-  },
-  {
-    "statement": "Step 5: Finally, we'll show a summary of what happened.",
-    "function_name": "show_summary"
-  },
-  {
-    "statement": "Congratulations! You've completed the ASH example recipe. Check out the recipes/ folder for more examples, or create your own!"
-  }
-]
+}
