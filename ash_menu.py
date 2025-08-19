@@ -98,7 +98,8 @@ def format_menu_panels(menu_items_data):
                 version_display += " [green]✓ Upgraded[/green]"
 
         # Error display
-        error_text = f"\n[bold red]LOAD ERROR:\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
+        filename = item.get('filename', 'N/A')
+        error_text = f"\n[bold red]LOAD ERROR: [black]({filename})[/black]\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
 
         # Get color from recipe, default to white if not specified or invalid
         color_str = item.get("color", "white")
@@ -271,7 +272,8 @@ def display_menu():
             
         if selected_recipe_data:
             if 'load_error' in selected_recipe_data:
-                console.print("[bold red]Cannot run recipe with load errors:[/bold red]")
+                filename = selected_recipe_data.get('filename', 'Unknown Recipe')
+                console.print(f"[bold red]Cannot run recipe due to load errors:[/bold red] [black]({filename})[/black]")
                 console.print(f"[red]{selected_recipe_data['load_error']}[/red]")
                 console.input("\n[dim]Press Enter to return to menu...[/dim]")
                 continue
