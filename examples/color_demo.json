@@ -1,0 +1,14 @@
+{
+    "version": "1.1",
+    "title": "Display Rich Colors",
+    "description": "Displays a list of all supported named colors from the Rich library.",
+    "color": "rainbow",
+    "step1": {
+        "statement": "The following is a list of all named colors supported by the Rich library, which is used for styling this application's interface.",
+        "function_name": "print_colors"
+    },
+    "step2": {
+        "statement": "You can use any of these names (e.g., 'orange1', 'deep_sky_blue3') in the 'color' property of your recipes to customize their appearance in the menu."
+    }
+}
+

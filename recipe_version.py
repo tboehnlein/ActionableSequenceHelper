@@ -178,6 +178,7 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
         # Title and description are at top level in v1.1
         title = recipe_data.get("title", "")
         color = recipe_data.get("color")
+        color_end = recipe_data.get("color_end")
         description = recipe_data.get("description", "")
         
         # If they're still in metadata (old v1.1 format), use those as fallback
@@ -188,6 +189,8 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
             description = metadata["description"]
         if not color and "color" in metadata:
             color = metadata["color"]
+        if not color_end and "color_end" in metadata:
+            color_end = metadata["color_end"]
         
         # Set defaults if still empty
         if not title:
@@ -223,6 +226,8 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
         }
         if color:
             execution_metadata["color"] = color
+        if color_end:
+            execution_metadata["color_end"] = color_end
         execution_format = [execution_metadata] + steps
         return execution_format
     else:

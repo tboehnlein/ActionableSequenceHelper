@@ -2,6 +2,7 @@
     "version": "1.1",
     "title": "Simple ASH Example",
     "description": "A clean example demonstrating core ASH v1.1 features with only supported properties",
+    "color": "blue",
     "step1": {
         "statement": "Welcome! This example demonstrates ASH v1.1 with user prompts, function calls, and error handling."
     },

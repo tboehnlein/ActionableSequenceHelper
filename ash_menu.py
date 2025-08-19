@@ -66,11 +66,14 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.box import HEAVY, ROUNDED, HEAVY_HEAD
 from rich.color import Color, ColorParseError
+from rich.text import Text
 import execute_recipe
 import importlib.util
 import inspect
+import random
 from __version__ import __version__
 import recipe_version
+from extensions import rainbow_text, get_color_from_hue
 
 software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
 console = Console()
@@ -199,21 +202,37 @@ def format_menu_panels(menu_items_data):
 
         # Get color from recipe, default to white if not specified or invalid
         color_str = item.get("color", "white")
-        valid_color = "white"
-        if isinstance(color_str, str):
-            try:
-                # Use rich's own parser to validate the color.
-                # This supports names, hex, rgb, etc.
-                Color.parse(color_str)
-                valid_color = color_str
-            except ColorParseError:
-                pass  # valid_color is already "white"
+        
+        if color_str.lower() == "rainbow":
+            # Each rainbow recipe gets a unique, random starting color for its gradient.
+            start_hue = random.random()
+            title_text = rainbow_text(f"{i+1}.) {item['title']}", start_hue=start_hue)
+            title_text.stylize("bold")
 
-        panel_content = (
-            f"[bold {valid_color}]{i+1}.) {item['title']}[/bold {valid_color}]\n"
-            f"{item['description']}{version_display}{error_text}"
-        )
-        panels.append(Panel(panel_content, expand=True, border_style=valid_color))
+            # The border color will be the starting color of the rainbow gradient.
+            border_color = get_color_from_hue(start_hue)
+
+            panel_content = Text.assemble(
+                title_text,
+                f"\n{item['description']}{version_display}{error_text}"
+            )
+            panels.append(Panel(panel_content, expand=True, border_style=border_color))
+        else:
+            valid_color = "white"
+            if isinstance(color_str, str):
+                try:
+                    # Use rich's own parser to validate the color.
+                    # This supports names, hex, rgb, etc.
+                    Color.parse(color_str)
+                    valid_color = color_str
+                except ColorParseError:
+                    pass  # valid_color is already "white"
+            
+            panel_content = (
+                f"[bold {valid_color}]{i+1}.) {item['title']}[/bold {valid_color}]\n"
+                f"{item['description']}{version_display}{error_text}"
+            )
+            panels.append(Panel(panel_content, expand=True, border_style=valid_color))
     return panels
 
 def load_recipe_details(recipe_files):
