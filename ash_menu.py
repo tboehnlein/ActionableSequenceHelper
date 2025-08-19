@@ -73,7 +73,7 @@ import inspect
 import random
 from __version__ import __version__
 import recipe_version
-from extensions import rainbow_text, get_color_from_hue
+from extensions import rainbow_text, get_color_from_hue, gradient_text
 
 software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
 console = Console()
@@ -202,8 +202,29 @@ def format_menu_panels(menu_items_data):
 
         # Get color from recipe, default to white if not specified or invalid
         color_str = item.get("color", "white")
+        color_end_str = item.get("color_end")
         
-        if color_str.lower() == "rainbow":
+        if color_end_str:
+            try:
+                # Validate both colors before creating gradient
+                Color.parse(color_str)
+                Color.parse(color_end_str)
+                title_text = gradient_text(f"{i+1}.) {item['title']}", start_color=color_str, end_color=color_end_str)
+                title_text.stylize("bold")
+                border_color = color_str
+                panel_content = Text.assemble(
+                    title_text,
+                    f"\n{item['description']}{version_display}{error_text}"
+                )
+                panels.append(Panel(panel_content, expand=True, border_style=border_color))
+            except ColorParseError:
+                # Fallback for invalid gradient colors to solid white
+                panel_content = (
+                    f"[bold white]{i+1}.) {item['title']}[/bold white]\n"
+                    f"{item['description']}{version_display}{error_text}"
+                )
+                panels.append(Panel(panel_content, expand=True, border_style="white"))
+        elif color_str.lower() == "rainbow":
             # Each rainbow recipe gets a unique, random starting color for its gradient.
             start_hue = random.random()
             title_text = rainbow_text(f"{i+1}.) {item['title']}", start_hue=start_hue)
@@ -257,6 +278,7 @@ def load_recipe_details(recipe_files):
                     title = metadata.get('title', f"Recipe {i + 1}")
                     description = metadata.get('description', "No description available.")
                     color = metadata.get('color', "white")
+                    color_end = metadata.get('color_end')
                     load_errors = verify_recipe_with_execution_format(execution_recipe, module_path)
                     menu_item = {
                         "filename": recipe_file,
@@ -266,6 +288,8 @@ def load_recipe_details(recipe_files):
                         "was_upgraded": was_upgraded,
                         "color": color
                     }
+                    if color_end:
+                        menu_item['color_end'] = color_end
                     if load_errors:
                         menu_item["load_error"] = "\n".join(load_errors)
                     menu_items.append(menu_item)
