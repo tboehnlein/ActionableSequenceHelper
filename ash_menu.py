@@ -65,6 +65,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.box import HEAVY, ROUNDED, HEAVY_HEAD
+from rich.color import Color, ColorParseError
 import execute_recipe
 import importlib.util
 import inspect
@@ -178,17 +179,47 @@ def verify_recipe(recipe_path, module_path):
                     errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
     return errors
 
+def format_menu_panels(menu_items_data):
+    """
+    Create a list of rich Panel objects for each recipe menu item, showing version info and LOAD ERROR if present.
+    Applies recipe-defined color to the panel and title if specified.
+    """
+    panels = []
+    for i, item in enumerate(menu_items_data):
+        # Version info display - only show if not latest version or if there are errors
+        version_info = item.get('version_info', 'unknown')
+        version_display = ""
+        if version_info != 'v1.1' or item.get('was_upgraded', False):
+            version_display = f"\n[dim]{version_info}[/dim]"
+            if item.get('was_upgraded', False):
+                version_display += " [green]✓ Upgraded[/green]"
+
+        # Error display
+        error_text = f"\n[bold red]LOAD ERROR:\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
+
+        # Get color from recipe, default to white if not specified or invalid
+        color_str = item.get("color", "white")
+        valid_color = "white"
+        if isinstance(color_str, str):
+            try:
+                # Use rich's own parser to validate the color.
+                # This supports names, hex, rgb, etc.
+                Color.parse(color_str)
+                valid_color = color_str
+            except ColorParseError:
+                pass  # valid_color is already "white"
+
+        panel_content = (
+            f"[bold {valid_color}]{i+1}.) {item['title']}[/bold {valid_color}]\n"
+            f"{item['description']}{version_display}{error_text}"
+        )
+        panels.append(Panel(panel_content, expand=True, border_style=valid_color))
+    return panels
+
 def load_recipe_details(recipe_files):
     """
     Loads recipe details from JSON files for menu display, with versioning support.
-
-    Parameters:
-        recipe_files (list of str): List of recipe JSON filenames in the recipes directory.
-
-    Returns:
-        tuple: (menu_items, recipes_data)
-            menu_items (list of dict): Each dict contains filename, title, description, and version info for a recipe.
-            recipes_data (dict): Mapping of filename to loaded recipe data.
+    Now supports 'color' property in recipes.
     """
     menu_items = []
     recipes_data = {}
@@ -197,29 +228,24 @@ def load_recipe_details(recipe_files):
             recipe_path = os.path.join(RECIPES_DIR, recipe_file)
             module_name = os.path.splitext(recipe_file)[0]
             module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            
-            # Load recipe with version handling
             try:
                 execution_recipe, version_info, was_upgraded = recipe_version.process_recipe_with_versioning(
                     recipe_path, auto_upgrade=True
                 )
                 recipes_data[recipe_file] = execution_recipe
-                
-                # Extract metadata (now works with any version)
                 if execution_recipe and isinstance(execution_recipe, list) and len(execution_recipe) > 0:
                     metadata = execution_recipe[0]
                     title = metadata.get('title', f"Recipe {i + 1}")
                     description = metadata.get('description', "No description available.")
-                    
-                    # Verify recipe functions
+                    color = metadata.get('color', "white")
                     load_errors = verify_recipe_with_execution_format(execution_recipe, module_path)
-                    
                     menu_item = {
                         "filename": recipe_file,
                         "title": title,
                         "description": description,
                         "version_info": version_info,
-                        "was_upgraded": was_upgraded
+                        "was_upgraded": was_upgraded,
+                        "color": color
                     }
                     if load_errors:
                         menu_item["load_error"] = "\n".join(load_errors)
@@ -230,10 +256,10 @@ def load_recipe_details(recipe_files):
                         "title": f"{recipe_file} - No valid steps found.",
                         "description": "",
                         "version_info": "unknown",
-                        "was_upgraded": False
+                        "was_upgraded": False,
+                        "color": "blue"
                     })
             except Exception as version_error:
-                # Fallback to legacy loading for compatibility
                 console.print(f"[yellow]Warning: Version processing failed for {recipe_file}, using legacy mode: {version_error}[/yellow]")
                 with open(recipe_path, 'r') as f:
                     recipe = json.load(f)
@@ -242,12 +268,14 @@ def load_recipe_details(recipe_files):
                     if recipe and isinstance(recipe, list) and len(recipe) > 0:
                         title = recipe[0].get('title', f"Recipe {i + 1}")
                         description = recipe[0].get('description', "No description available.")
+                        color = recipe[0].get('color', "blue")
                         menu_item = {
                             "filename": recipe_file,
                             "title": title,
                             "description": description,
                             "version_info": "v1.0 (legacy)",
-                            "was_upgraded": False
+                            "was_upgraded": False,
+                            "color": color
                         }
                         if load_errors:
                             menu_item["load_error"] = "\n".join(load_errors)
@@ -259,40 +287,10 @@ def load_recipe_details(recipe_files):
                 "title": f"{recipe_file} - Error loading",
                 "description": str(e),
                 "version_info": "error",
-                "was_upgraded": False
+                "was_upgraded": False,
+                "color": "blue"
             })
     return menu_items, recipes_data
-
-def format_menu_panels(menu_items_data):
-    """
-    Create a list of rich Panel objects for each recipe menu item, showing version info and LOAD ERROR if present.
-
-    Parameters:
-        menu_items_data (list of dict): List of recipe metadata dicts.
-
-    Returns:
-        list of Panel: Panels for display in the menu.
-    """
-    panels = []
-    for i, item in enumerate(menu_items_data):
-        # Version info display - only show if not latest version or if there are errors
-        version_info = item.get('version_info', 'unknown')
-        version_display = ""
-        
-        # Show version info only if it's not the latest version (v1.1) or if there was an upgrade
-        if version_info != 'v1.1' or item.get('was_upgraded', False):
-            version_display = f"\n[dim]{version_info}[/dim]"
-            
-            # Upgrade indicator
-            if item.get('was_upgraded', False):
-                version_display += " [green]✓ Upgraded[/green]"
-        
-        # Error display
-        error_text = f"\n[bold red]LOAD ERROR:\n{item['load_error']}[/bold red]" if 'load_error' in item else ""
-        
-        panel_content = f"[bold]{i+1}.) {item['title']}\n[/bold]{item['description']}{version_display}{error_text}"
-        panels.append(Panel(panel_content, expand=True))
-    return panels
 
 def find_recipe_by_choice(choice, menu_items_data):
     """

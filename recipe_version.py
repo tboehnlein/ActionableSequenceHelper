@@ -177,6 +177,7 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
         # Convert v1.1 to execution format
         # Title and description are at top level in v1.1
         title = recipe_data.get("title", "")
+        color = recipe_data.get("color")
         description = recipe_data.get("description", "")
         
         # If they're still in metadata (old v1.1 format), use those as fallback
@@ -185,6 +186,8 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
             title = metadata["title"]
         if not description and "description" in metadata:
             description = metadata["description"]
+        if not color and "color" in metadata:
+            color = metadata["color"]
         
         # Set defaults if still empty
         if not title:
@@ -214,7 +217,13 @@ def normalize_recipe_for_execution(recipe_data: Any) -> List[Dict]:
                 steps.append(step_data)
         
         # Reconstruct v1.0 format for execution
-        execution_format = [{"title": title, "description": description}] + steps
+        execution_metadata = {
+            "title": title,
+            "description": description
+        }
+        if color:
+            execution_metadata["color"] = color
+        execution_format = [execution_metadata] + steps
         return execution_format
     else:
         raise ValueError(f"Cannot normalize unsupported recipe version: {version}")
