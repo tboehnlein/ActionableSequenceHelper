@@ -28,6 +28,8 @@ RECIPE FORMAT:
         "version": "1.1",
         "title": "Recipe Name",
         "description": "What it does",
+        "color": "blue",          // Optional: for solid color, or "rainbow"
+        "color_end": "green",     // Optional: for gradient effect with "color"
         "step1": {"statement": "First step - just text"},
         "step2": {
             "statement": "Second step - calls a function",
@@ -75,113 +77,10 @@ import time
 from __version__ import __version__
 import recipe_version
 from extensions import rainbow_text, get_color_from_hue, gradient_text
+from load_recipe import load_recipe_details, RECIPES_DIR
 
 software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
 console = Console()
-RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
-
-def verify_recipe_with_execution_format(execution_recipe, module_path):
-    """
-    Verify that all functions and prompt_for parameters in the execution format recipe exist in the Python module.
-    Returns a list of error messages (empty if no errors).
-    """
-    errors = []
-    if not execution_recipe or not isinstance(execution_recipe, list):
-        errors.append("Invalid recipe format")
-        return errors
-    
-    module = None
-    if os.path.exists(module_path):
-        try:
-            module_name = os.path.splitext(os.path.basename(module_path))[0]
-            spec = importlib.util.spec_from_file_location(module_name, module_path)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-        except Exception as e:
-            errors.append(f"Python load error: {e}")
-    
-    for idx, step in enumerate(execution_recipe[1:], start=2):
-        func_name = step.get('function_name')
-        if func_name:
-            if not module:
-                errors.append(f"Step {idx}: Missing Python file for function '{func_name}'")
-                continue
-            func = getattr(module, func_name, None)
-            if not func:
-                errors.append(f"Step {idx}: Function '{func_name}' not found in module")
-                continue
-            sig = inspect.signature(func)
-            func_params = sig.parameters
-            prompt_for = step.get('prompt_for', {})
-            
-            # Check prompt_for parameters exist in function
-            for param in prompt_for:
-                if param not in func_params:
-                    errors.append(f"Step {idx}: Parameter '{param}' in prompt_for not found in function '{func_name}'")
-            
-            # Check for unknown parameters (excluding injected dependencies and internal properties)
-            injected_params = {'console', 'run_tk_dialog', 'recipe_context'}
-            step_params = set(step.keys()) - {'statement', 'function_name', 'prompt_for'}
-            for param in step_params:
-                # Skip internal properties that start with underscore
-                if param.startswith('_'):
-                    continue
-                if param not in func_params and param not in injected_params:
-                    errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
-    return errors
-
-def verify_recipe(recipe_path, module_path):
-    """
-    Verify that all functions and prompt_for parameters in the recipe exist in the Python module.
-    Returns a list of error messages (empty if no errors).
-    """
-    errors = []
-    try:
-        with open(recipe_path, 'r') as f:
-            recipe = json.load(f)
-    except Exception as e:
-        errors.append(f"JSON load error: {e}")
-        return errors
-    module = None
-    if os.path.exists(module_path):
-        try:
-            module_name = os.path.splitext(os.path.basename(module_path))[0]
-            spec = importlib.util.spec_from_file_location(module_name, module_path)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-        except Exception as e:
-            errors.append(f"Python load error: {e}")
-    for idx, step in enumerate(recipe[1:], start=2):
-        func_name = step.get('function_name')
-        if func_name:
-            if not module:
-                errors.append(f"Step {idx}: Missing Python file for function '{func_name}'")
-                continue
-            func = getattr(module, func_name, None)
-            if not func:
-                errors.append(f"Step {idx}: Function '{func_name}' not found in module")
-                continue
-            sig = inspect.signature(func)
-            func_params = sig.parameters
-            prompt_for = step.get('prompt_for', {})
-            
-            # Check prompt_for parameters exist in function
-            for param in prompt_for:
-                if param not in func_params:
-                    errors.append(f"Step {idx}: Parameter '{param}' in prompt_for not found in function '{func_name}'")
-            
-            # Check for unknown parameters (excluding injected dependencies and internal properties)
-            injected_params = {'console', 'run_tk_dialog', 'recipe_context'}
-            step_params = set(step.keys()) - {'statement', 'function_name', 'prompt_for'}
-            for param in step_params:
-                # Skip internal properties that start with underscore
-                if param.startswith('_'):
-                    continue
-                if param not in func_params and param not in injected_params:
-                    errors.append(f"Step {idx}: Parameter '{param}' not found in function '{func_name}'")
-    return errors
 
 def format_menu_panels(menu_items_data):
     """
@@ -258,84 +157,7 @@ def format_menu_panels(menu_items_data):
             panels.append(Panel(panel_content, expand=True, border_style=valid_color))
     return panels
 
-def load_recipe_details(recipe_files):
-    """
-    Loads recipe details from JSON files for menu display, with versioning support.
-    Now supports 'color' property in recipes.
-    """
-    menu_items = []
-    recipes_data = {}
-    for i, recipe_file in enumerate(recipe_files):
-        try:
-            recipe_path = os.path.join(RECIPES_DIR, recipe_file)
-            module_name = os.path.splitext(recipe_file)[0]
-            module_path = os.path.join(RECIPES_DIR, f"{module_name}.py")
-            try:
-                execution_recipe, version_info, was_upgraded = recipe_version.process_recipe_with_versioning(
-                    recipe_path, auto_upgrade=True
-                )
-                recipes_data[recipe_file] = execution_recipe
-                if execution_recipe and isinstance(execution_recipe, list) and len(execution_recipe) > 0:
-                    metadata = execution_recipe[0]
-                    title = metadata.get('title', f"Recipe {i + 1}")
-                    description = metadata.get('description', "No description available.")
-                    color = metadata.get('color', "white")
-                    color_end = metadata.get('color_end')
-                    load_errors = verify_recipe_with_execution_format(execution_recipe, module_path)
-                    menu_item = {
-                        "filename": recipe_file,
-                        "title": title,
-                        "description": description,
-                        "version_info": version_info,
-                        "was_upgraded": was_upgraded,
-                        "color": color
-                    }
-                    if color_end:
-                        menu_item['color_end'] = color_end
-                    if load_errors:
-                        menu_item["load_error"] = "\n".join(load_errors)
-                    menu_items.append(menu_item)
-                else:
-                    menu_items.append({
-                        "filename": recipe_file,
-                        "title": f"{recipe_file} - No valid steps found.",
-                        "description": "",
-                        "version_info": "unknown",
-                        "was_upgraded": False,
-                        "color": "blue"
-                    })
-            except Exception as version_error:
-                console.print(f"[yellow]Warning: Version processing failed for {recipe_file}, using legacy mode: {version_error}[/yellow]")
-                with open(recipe_path, 'r') as f:
-                    recipe = json.load(f)
-                    recipes_data[recipe_file] = recipe
-                    load_errors = verify_recipe(recipe_path, module_path)
-                    if recipe and isinstance(recipe, list) and len(recipe) > 0:
-                        title = recipe[0].get('title', f"Recipe {i + 1}")
-                        description = recipe[0].get('description', "No description available.")
-                        color = recipe[0].get('color', "blue")
-                        menu_item = {
-                            "filename": recipe_file,
-                            "title": title,
-                            "description": description,
-                            "version_info": "v1.0 (legacy)",
-                            "was_upgraded": False,
-                            "color": color
-                        }
-                        if load_errors:
-                            menu_item["load_error"] = "\n".join(load_errors)
-                        menu_items.append(menu_item)
-        except Exception as e:
-            console.print(f"[bold red]Error reading {recipe_file}: {e}[/bold red]")
-            menu_items.append({
-                "filename": recipe_file,
-                "title": f"{recipe_file} - Error loading",
-                "description": str(e),
-                "version_info": "error",
-                "was_upgraded": False,
-                "color": "blue"
-            })
-    return menu_items, recipes_data
+
 
 def find_recipe_by_choice(choice, menu_items_data):
     """
@@ -424,7 +246,7 @@ def display_menu():
     while True:
         # Load and display menu
         recipe_files = [f for f in os.listdir(RECIPES_DIR) if f.endswith(".json")]
-        menu_items_data, recipes_data = load_recipe_details(recipe_files)
+        menu_items_data, recipes_data = load_recipe_details(recipe_files, console)
         show_menu_display(menu_items_data)
         
         # Get user input

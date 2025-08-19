@@ -21,6 +21,8 @@ RECIPE FORMAT EVOLUTION:
         "version": "1.1",
         "title": "Recipe Name",
         "description": "What it does",
+        "color": "blue",          // Optional: for solid color, or "rainbow"
+        "color_end": "green",     // Optional: for gradient effect with "color"
         "step1": {"statement": "First step"},
         "step2": {"statement": "Second step", "function_name": "func"},
         "step3": {"statement": "Third step"}

@@ -1,3 +1,16 @@
+"""
+Rich Text Extensions for ASH
+
+This module provides utility functions for creating visually appealing text
+effects using the 'rich' library. It includes functions for generating
+gradient text and rainbow-colored text, which can be used to enhance the
+console output of the application.
+
+Functions:
+    - gradient_text: Creates text with a smooth color gradient between two specified colors.
+    - rainbow_text: Creates text with a vibrant, cycling rainbow effect.
+    - get_color_from_hue: A helper function to convert a hue value to a rich-compatible color string.
+"""
 import colorsys
 import random
 import re
@@ -79,6 +92,8 @@ def gradient_text(text: str, start_color: str, end_color: str, by_word: bool = F
 def get_color_from_hue(hue: float) -> str:
     """
     Calculates an RGB color string from a hue value (0.0 to 1.0).
+
+    The generated string is in a format compatible with the 'rich' library.
     """
     # Convert HSV to RGB. Saturation and Value are 1.0 for bright, vibrant colors.
     rgb = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
