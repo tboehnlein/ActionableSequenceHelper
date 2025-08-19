@@ -28,9 +28,8 @@ from rich.console import Console
 import importlib.util
 import inspect
 from __version__ import __version__
+from ash_consts import RECIPES_DIR
 import recipe_version
-
-RECIPES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipes")
 
 def load_recipe_details(recipe_files, console:Console):
     """

@@ -38,12 +38,7 @@ import json
 import os
 import shutil
 from typing import Dict, List, Any, Tuple, Optional
-from rich.console import Console
-
-console = Console()
-
-# Current supported recipe version
-CURRENT_RECIPE_VERSION = "1.1"
+from ash_consts import CURRENT_RECIPE_VERSION, console
 
 # Version history and compatibility
 VERSION_HISTORY = {

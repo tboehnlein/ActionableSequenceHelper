@@ -76,11 +76,8 @@ import inspect
 import tkinter as tk
 import traceback
 from tkinter import filedialog
-from rich.console import Console
 from rich.panel import Panel
-
-# console object for rich text output
-console = Console()
+from ash_consts import console
 
 def run_tk_dialog(dialog_func, *args, **kwargs):
     """

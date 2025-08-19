@@ -63,7 +63,6 @@ DIRECTORY STRUCTURE:
 
 import os
 import json
-from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.box import HEAVY, ROUNDED, HEAVY_HEAD
@@ -77,10 +76,10 @@ import time
 from __version__ import __version__
 import recipe_version
 from extensions import rainbow_text, get_color_from_hue, gradient_text
-from load_recipe import load_recipe_details, RECIPES_DIR
+from load_recipe import load_recipe_details
+from ash_consts import RECIPES_DIR, console
 
 software_version = f"Actionable Sequence Helper (ASH) v{__version__}"
-console = Console()
 
 def format_menu_panels(menu_items_data):
     """
