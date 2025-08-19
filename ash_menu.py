@@ -64,6 +64,7 @@ import json
 from rich.console import Console
 from rich.panel import Panel
 from rich.columns import Columns
+from rich.box import HEAVY, ROUNDED, HEAVY_HEAD
 import execute_recipe
 import importlib.util
 import inspect
@@ -344,6 +345,7 @@ def show_menu_display(menu_items_data):
         menu_columns,
         title=f"[bold blue]Welcome to {software_version}![/bold blue]",
         border_style="blue",
+        box=HEAVY,
         subtitle="Enter Q to quit, R to refresh, or V for version info."
     ))
 
