@@ -71,6 +71,7 @@ import execute_recipe
 import importlib.util
 import inspect
 import random
+import time
 from __version__ import __version__
 import recipe_version
 from extensions import rainbow_text, get_color_from_hue, gradient_text
@@ -227,6 +228,7 @@ def format_menu_panels(menu_items_data):
         elif color_str.lower() == "rainbow":
             # Each rainbow recipe gets a unique, random starting color for its gradient.
             start_hue = random.random()
+            time.sleep(0.05) # Add a small pause to ensure random.random() gets a different seed if called rapidly            
             title_text = rainbow_text(f"{i+1}.) {item['title']}", start_hue=start_hue)
             title_text.stylize("bold")
 
