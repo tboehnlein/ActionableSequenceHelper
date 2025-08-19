@@ -1,0 +1,51 @@
+ASH Menu Design Ideas
+=====================
+
+This document outlines potential future improvements for the ASH menu system, specifically for handling recipe groups.
+
+
+Idea 1: Sub-Menus for Groups
+----------------------------
+
+This is the simplest approach to grouping.
+
+- **Concept:** The main menu displays ungrouped recipes and group names. Selecting a group name (e.g., by number) navigates the user to a new, separate menu screen that shows only the recipes within that group. This sub-menu would include a "Back" option to return to the main menu.
+- **Pros:**
+    - Highly scalable; the main menu remains clean regardless of how many recipes are in groups.
+    - Simple to implement and understand.
+    - Provides a focused view, reducing cognitive load for the user.
+- **Cons:**
+    - Can feel "clunky" or slow if a group only contains one or two recipes, as it requires extra navigation steps.
+    - Recipes inside groups are not immediately visible, reducing discoverability.
+
+
+Idea 2: Hybrid Menu with Most Recently Used (MRU) Previews
+----------------------------------------------------------
+
+This is a more advanced approach that combines discoverability with organization.
+
+- **Concept:** The main menu displays both ungrouped recipes and "group boxes". Each group box would show a preview of the top 5 most recently used (MRU) recipes from that group. The group box itself would also be selectable to view all recipes in that group (as in Idea 1).
+- **Pros:**
+    - Excellent discoverability for frequently used recipes.
+    - Solves the "clunkiness" of the sub-menu model for common tasks.
+    - Remains scalable and organized, as the main menu size is controlled.
+- **Cons:**
+    - Requires state management to track MRU history for each group (e.g., in a `group_history.json` file).
+    - More complex menu generation and input handling logic.
+
+
+Idea 3: Alphanumeric Selection (The "4b" Idea)
+----------------------------------------------
+
+This is a user experience enhancement for the Hybrid/MRU Menu.
+
+- **Concept:** Instead of numbering every single item on the main menu sequentially, this model assigns stable numbers to top-level items (ungrouped recipes and group boxes). The MRU recipes within a group preview would be assigned letters (a, b, c, etc.).
+    - To select the second MRU recipe in the fourth menu item (a group), the user would type `4b`.
+    - To select the group itself to see all its recipes, the user would just type `4`.
+- **Pros:**
+    - **Stable Numbering:** Top-level menu numbers don't change when MRU lists are updated, making the menu more predictable.
+    - **Clear Hierarchy:** The `4b` syntax intuitively communicates a parent-child relationship between the group and the recipe.
+    - **Faster Selection:** Feels more like a direct command and reduces the mental effort of scanning a long, sequentially numbered list.
+- **Cons:**
+    - The input parsing logic becomes slightly more complex, as it needs to handle both numeric and alphanumeric inputs.
+
