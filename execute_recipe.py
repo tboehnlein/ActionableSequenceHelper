@@ -323,7 +323,8 @@ def run_recipe_from_data(recipe_data: list, module_path: str):
         if step_index < len(recipe_data) - 1:  # Not the last step
             console.input("\n[dim]Press Enter to continue...[/dim]")
     
-    console.print("\n[bold green]--- Recipe Complete ---")
+    console.print("\n[bold green]--- Recipe Complete ---[/bold green]")
+    console.input("\n[dim]Press Enter to return to the main menu...[/dim]")
 
 def run_recipe(recipe_path: str, module_path: str):
     """Execute a recipe file step-by-step with user guidance."""
@@ -360,7 +361,8 @@ def run_recipe(recipe_path: str, module_path: str):
         if step_index < len(recipe) - 1:  # Not the last step
             console.input("\n[dim]Press Enter to continue...[/dim]")
     
-    console.print("\n[bold green]--- Recipe Complete ---")
+    console.print("\n[bold green]--- Recipe Complete ---[/bold green]")
+    console.input("\n[dim]Press Enter to return to the main menu...[/dim]")
 
 if __name__ == "__main__":
     # Example of how to run it directly (for testing)
