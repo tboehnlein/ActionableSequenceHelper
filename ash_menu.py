@@ -270,6 +270,12 @@ def display_menu():
             continue
             
         if selected_recipe_data:
+            if 'load_error' in selected_recipe_data:
+                console.print("[bold red]Cannot run recipe with load errors:[/bold red]")
+                console.print(f"[red]{selected_recipe_data['load_error']}[/red]")
+                console.input("\n[dim]Press Enter to return to menu...[/dim]")
+                continue
+
             if not handle_recipe_selection(selected_recipe_data, recipes_data):
                 break  # Exit if recipe execution requests it
 

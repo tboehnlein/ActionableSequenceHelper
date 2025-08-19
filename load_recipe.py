@@ -166,7 +166,10 @@ def verify_recipe(recipe_path, module_path, console:Console):
             errors.append(f"Python load error: {e}")
     for idx, step in enumerate(recipe[1:], start=2):
         func_name = step.get('function_name')
-        if func_name:
+        if func_name is not None:
+            if not func_name:
+                errors.append(f"Step {idx}: 'function_name' cannot be an empty string.")
+                continue
             if not module:
                 errors.append(f"Step {idx}: Missing Python file for function '{func_name}'")
                 continue
@@ -230,7 +233,10 @@ def verify_recipe_with_execution_format(execution_recipe, module_path, console:C
     
     for idx, step in enumerate(execution_recipe[1:], start=2):
         func_name = step.get('function_name')
-        if func_name:
+        if func_name is not None:
+            if not func_name:
+                errors.append(f"Step {idx}: 'function_name' cannot be an empty string.")
+                continue
             if not module:
                 errors.append(f"Step {idx}: Missing Python file for function '{func_name}'")
                 continue
