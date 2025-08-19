@@ -49,3 +49,29 @@ This is a user experience enhancement for the Hybrid/MRU Menu.
 - **Cons:**
     - The input parsing logic becomes slightly more complex, as it needs to handle both numeric and alphanumeric inputs.
 
+
+Idea 4: Directory-Based Groups (Structural Improvement)
+------------------------------------------------------
+
+This is a structural alternative to using a "group" property inside each recipe file. It provides a much cleaner organization.
+
+- **Concept:** Instead of a flat list of recipes in the `recipes/` folder, each group is represented by a subdirectory.
+    - `recipes/`
+        - `File Tools/` (This directory is a group)
+            - `group_config.json` (Contains metadata for the "File Tools" group)
+            - `recipe1.json`
+            - `recipe1.py`
+        - `ungrouped_recipe.json` (This recipe is not in any group)
+
+- **group_config.json:** This file would define the group's properties, such as:
+    - `title`: "File Manipulation Tools" (The display name for the group box)
+    - `description`: "A collection of recipes for working with files."
+    - `color`, `color_end`: Styling for the group's menu panel.
+    - `mru_limit`: (Optional) How many MRU items to show in the preview, e.g., 5.
+
+- **Pros:**
+    - **Superior Organization:** The file system itself is organized, which is highly intuitive.
+    - **Clear Configuration:** Group settings are cleanly separated into their own configuration file, not mixed into a recipe.
+    - **Simpler Recipes:** Recipe files no longer need a `group` property.
+- **Cons:**
+    - **More Complex Loading:** The recipe loader must be updated to recursively scan directories and handle both grouped and ungrouped recipes.
