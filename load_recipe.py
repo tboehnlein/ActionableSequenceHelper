@@ -73,6 +73,7 @@ def load_recipe_details(recipe_files, console:Console):
                     description = metadata.get('description', "No description available.")
                     color = metadata.get('color', "white")
                     color_end = metadata.get('color_end')
+                    group = metadata.get('group')
                     load_errors = verify_recipe_with_execution_format(execution_recipe, module_path, console)
                     menu_item = {
                         "filename": recipe_file,
@@ -84,6 +85,8 @@ def load_recipe_details(recipe_files, console:Console):
                     }
                     if color_end:
                         menu_item['color_end'] = color_end
+                    if group:
+                        menu_item['group'] = group
                     if load_errors:
                         menu_item["load_error"] = "\n".join(load_errors)
                     menu_items.append(menu_item)

@@ -66,6 +66,7 @@ The JSON file uses the modern v1.1 flat format. Simply add your title, descripti
 *   `version`: Always set to "1.1" for the current format
 *   `title`: The recipe name displayed in the menu
 *   `description`: Brief description of what the recipe does
+*   `group` (optional): A string to group related recipes in the menu.
 *   `color` (optional): A color name (e.g., "blue"), hex code, or "rainbow" to style the menu panel.
 *   `color_end` (optional): A second color to create a gradient effect with `color`.
 *   `step1`, `step2`, `step3`, etc.: Your recipe steps as direct properties
@@ -81,6 +82,7 @@ The JSON file uses the modern v1.1 flat format. Simply add your title, descripti
   "version": "1.1",
   "title": "File Processing Example",
   "description": "Demonstrates recipe features: text steps, user prompts, and file dialogs",
+  "group": "File Examples",
   "color": "cyan",
   "color_end": "magenta",
   "step1": {
@@ -182,6 +184,7 @@ ASH supports multiple recipe formats for backward compatibility:
   "version": "1.1",
   "title": "Recipe Name",
   "description": "What it does",
+  "group": "My Group",
   "color": "yellow",
   "color_end": "green",
   "step1": {"statement": "First step"},

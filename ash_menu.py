@@ -28,6 +28,7 @@ RECIPE FORMAT:
         "version": "1.1",
         "title": "Recipe Name",
         "description": "What it does",
+        "group": "Recipe Group Name", // Optional: for grouping in the menu
         "color": "blue",          // Optional: for solid color, or "rainbow"
         "color_end": "green",     // Optional: for gradient effect with "color"
         "step1": {"statement": "First step - just text"},
